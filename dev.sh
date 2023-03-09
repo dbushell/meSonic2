@@ -1,6 +1,6 @@
 export APP_DEV=true
 
-cd app
+cd client
 npm run check
 npm run dev &
 cd ..
@@ -8,4 +8,4 @@ cd ..
 deno run \
   --unstable \
   --allow-all \
-  src/mod.ts
+  server/mod.ts

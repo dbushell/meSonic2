@@ -24,7 +24,7 @@ const config = {
     adapter: adapter(),
     alias: {
       $components: 'src/components',
-      $apiTypes: '../src/types'
+      $apiTypes: '../server/types'
     },
     csrf: {
       checkOrigin: process.env.NODE_ENV !== 'development'

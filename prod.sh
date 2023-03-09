@@ -13,7 +13,7 @@ export APP_DEV=false
 export APP_LOG_LEVEL=INFO
 
 (
-  cd app
+  cd client
   npm install
   npm run build
 )
@@ -25,6 +25,6 @@ deno run \
   --allow-write \
   --allow-net \
   --allow-ffi \
-  src/mod.ts &
+  server/mod.ts &
 
 wait

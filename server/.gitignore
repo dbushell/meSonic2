@@ -1,0 +1,14 @@
+/*
+!.gitignore
+!cache
+cache/*
+!database
+database/*
+!library
+library/*
+!schema
+schema/*
+!wasm_brotli
+!**/*.json
+!**/*.ts
+!**/*.sql
