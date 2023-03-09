@@ -1,6 +1,7 @@
 /// <reference lib="WebWorker"/>
 
 import * as fs from 'fs';
+import * as hex from 'hex';
 import * as path from 'path';
 import * as base58 from 'base58';
 import * as mediaTypes from 'media_types';
@@ -8,10 +9,23 @@ import * as env from '../library/env.ts';
 import * as timer from '../library/timer.ts';
 import * as brotli from '../wasm_brotli/pkg/wasm_brotli.js';
 import {CacheOptions, CacheItem, CacheMeta, CacheResponse} from '../types.ts';
-import {cacheDir, cacheExt, sha1Hash} from './shared.ts';
 import {log} from './log.ts';
 
 await brotli.default();
+
+const cacheDir = path.join(env.get('DATA_DIR'), 'cache');
+
+const cacheExt = new Set(['.json', '.avif', '.webp', '.png', '.jpeg', '.jpg']);
+
+const sha1Hash = async (str: string) => {
+  return new TextDecoder().decode(
+    hex.encode(
+      new Uint8Array(
+        await crypto.subtle.digest('sha-1', new TextEncoder().encode(str))
+      )
+    )
+  );
+};
 
 const cacheMetaPath = path.join(env.get('DATA_DIR'), 'cache.json');
 
