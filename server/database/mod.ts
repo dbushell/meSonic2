@@ -27,7 +27,7 @@ const ver = db.prepare('PRAGMA user_version').value<number[]>();
 if (!ver || ver[0] === 0) {
   try {
     const sql = await Deno.readTextFile(
-      path.join(Deno.cwd(), 'src/schema/001.sql')
+      path.join(Deno.cwd(), 'server/schema/001.sql')
     );
     const code = db.exec(sql);
     log.info(`${emoji} Exec schema 001 (${code})`);
