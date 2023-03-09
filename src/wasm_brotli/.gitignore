@@ -1,0 +1,11 @@
+/*
+!.gitignore
+!Cargo.toml
+!pkg
+pkg/*
+!pkg/*.js
+!pkg/*.ts
+!pkg/*.wasm
+!src
+src/*
+!src/*.rs

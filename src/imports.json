@@ -1,0 +1,17 @@
+{
+  "imports": {
+    "fs": "https://deno.land/std@0.178.0/fs/mod.ts",
+    "log": "https://deno.land/std@0.178.0/log/mod.ts",
+    "hex": "https://deno.land/std@0.178.0/encoding/hex.ts",
+    "path": "https://deno.land/std@0.178.0/path/mod.ts",
+    "uuid": "https://deno.land/std@0.178.0/uuid/mod.ts",
+    "async": "https://deno.land/std@0.178.0/async/mod.ts",
+    "dotenv": "https://deno.land/std@0.178.0/dotenv/mod.ts",
+    "base58": "https://deno.land/std@0.178.0/encoding/base58.ts",
+    "base64": "https://deno.land/std@0.178.0/encoding/base64.ts",
+    "datetime": "https://deno.land/std@0.178.0/datetime/mod.ts",
+    "media_types": "https://deno.land/std@0.178.0/media_types/mod.ts",
+    "file_server": "https://deno.land/std@0.178.0/http/file_server.ts",
+    "sqlite3": "https://deno.land/x/sqlite3@0.8.2/mod.ts"
+  }
+}
