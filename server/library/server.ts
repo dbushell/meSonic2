@@ -5,7 +5,6 @@ import * as db from '../database/mod.ts';
 import {serveFile, serveDir} from 'file_server';
 import {AddBookmark, Bookmark, RemoveBookmark} from '../types.ts';
 
-
 const kit = [
   path.join(env.get('BUILD_DIR'), 'server/index.js'),
   path.join(env.get('BUILD_DIR'), 'server/manifest.js'),
