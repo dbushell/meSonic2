@@ -4,8 +4,15 @@ import * as env from './env.ts';
 import * as db from '../database/mod.ts';
 import {serveFile, serveDir} from 'file_server';
 import {AddBookmark, Bookmark, RemoveBookmark} from '../types.ts';
-import {Server} from '../../build/server/index.js';
-import {manifest} from '../../build/server/manifest.js';
+
+
+const kit = [
+  path.join(env.get('BUILD_DIR'), 'server/index.js'),
+  path.join(env.get('BUILD_DIR'), 'server/manifest.js'),
+];
+
+const {Server} = await import(kit[0]);
+const {manifest} = await import(kit[1]);
 
 const sveltekit = new Server(manifest) as {
   init(options: {env: Record<string, string>}): Promise<void>;
@@ -160,7 +167,7 @@ const handleSvelteKit = async (
   request: Request
 ): Promise<Response> => {
   let response: Response = await serveDir(request, {
-    fsRoot: path.join(env.get('APP_BUILD_DIR'), 'client'),
+    fsRoot: path.join(env.get('BUILD_DIR'), 'client'),
     quiet: true
   });
   if (response && (response.ok || response.status < 400)) {

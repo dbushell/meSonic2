@@ -7,7 +7,7 @@ import json from '@rollup/plugin-json';
 // https://github.com/pluvial/svelte-adapter-deno/blob/main/index.js
 // https://github.com/sveltejs/kit/blob/master/packages/adapter-node/index.js
 export default function (opts = {}) {
-  const {out = '../build', precompress = false, envPrefix = ''} = opts;
+  const {out = process.env.APP_BUILD_DIR, precompress = false} = opts;
 
   return {
     name: 'deno-adapter',
