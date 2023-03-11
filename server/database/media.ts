@@ -1,5 +1,6 @@
 import * as log from 'log';
 import * as path from 'path';
+import {duration as audioDuration} from 'audio_duration';
 import * as db from './mod.ts';
 import * as env from '../library/env.ts';
 import {
@@ -21,10 +22,6 @@ const DIR = /^\w/;
 
 // File names must end with extension and not begin "." or "_"
 const FILE = new RegExp(`^(?!\\.|_).*\\.(${EXTENSIONS.join('|')})$`);
-
-// # Returns: duration string in form "S.SS s", "H:MM:SS" or "DD days HH:MM:SS"
-const DURATION = /^(?:(\d{1,2}) days? )?(\d{1,2}):(\d{1,2}):(\d{1,2})/;
-const SECONDS = /^(\d{1,2}\.\d{1,2})/;
 
 // Return list of matching directories in path
 export const getDirs = async (root: string) => {
@@ -116,34 +113,11 @@ export const findSong = async (
   );
   if (song) return song;
   try {
+    // TODO: batch concurrent tasks?
     const stat = await Deno.stat(entry.path);
-    const command = new Deno.Command('exiftool', {
-      args: ['-j', '-Duration', '-MIMEType', `${entry.path}`]
-    });
-    const {code, stdout} = await command.output();
-    if (code !== 0) return false;
-    const exif = JSON.parse(new TextDecoder().decode(stdout));
-    const mimetype = String(exif[0].MIMEType).trim();
-    if (!mimetype) {
-      throw new Error(`no MIMEType / Duration "${entry.path}"`);
-    }
-    const exitDuration = String(exif[0].Duration).trim();
-    let duration = 0;
-    let parts = DURATION.exec(exitDuration);
-    if (parts) {
-      const [, dd, hh, mm, ss] = parts;
-      duration =
-        Number(ss ?? 0) +
-        Number(mm ?? 0) * 60 +
-        Number(hh ?? 0) * 3600 +
-        Number(dd ?? 0) * 86400;
-    } else {
-      parts = SECONDS.exec(exitDuration);
-      if (parts) {
-        const [, ss] = parts;
-        duration = Math.round(Number(ss ?? 0));
-      }
-    }
+    const duration = await audioDuration(entry.path);
+    const mimetype =
+      path.extname(entry.path) === '.mp3' ? 'audio/mpeg' : 'audio/mp4';
     if (!duration) {
       throw new Error(`no Duration "${entry.path}"`);
     }

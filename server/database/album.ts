@@ -115,6 +115,6 @@ addEventListener('album:remove', ((event: CustomEvent<Album>) => {
 
 addEventListener('artist:remove', ((event: CustomEvent<Artist>) => {
   const artist = event.detail;
-  const albums = getAlbum({id: artist.id});
+  const albums = getAlbum({artist_id: artist.id});
   albums.forEach((album) => removeAlbum(album.id));
 }) as EventListener);

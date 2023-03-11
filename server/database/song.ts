@@ -57,6 +57,9 @@ export const getSong = (params: GetSong = {}): Song[] => {
         song.bookmarks = getBookmark({parent_id: song.id});
       }
     }
+    songs.forEach(song => {
+      song.duration = song.duration / 1000;
+    });
     naturalSort<Song>(songs);
     return songs;
   } catch (err) {
@@ -144,12 +147,12 @@ addEventListener('song:remove', ((event: CustomEvent<Song>) => {
 
 addEventListener('artist:remove', ((event: CustomEvent<Artist>) => {
   const artist = event.detail;
-  const songs = getArtist({id: artist.id});
+  const songs = getSong({artist_id: artist.id});
   songs.forEach((songs) => removeSong(songs.id));
 }) as EventListener);
 
 addEventListener('album:remove', ((event: CustomEvent<Album>) => {
   const album = event.detail;
-  const songs = getAlbum({id: album.id});
+  const songs = getSong({album_id: album.id});
   songs.forEach((songs) => removeSong(songs.id));
 }) as EventListener);
