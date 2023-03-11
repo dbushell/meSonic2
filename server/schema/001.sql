@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS bookmarks (
   created_at text NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   modified_at text NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   parent_id text NOT NULL,
+  parent_type text NULL,
   position integer NOT NULL
 );
 

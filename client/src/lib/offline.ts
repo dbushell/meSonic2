@@ -12,7 +12,7 @@ export const loadIndexedDB = async () => {
     updateStore();
   });
   open.addEventListener('error', (ev) => {
-    console.log(ev);
+    console.debug(ev);
   });
 };
 
@@ -31,7 +31,7 @@ const updateStore = async (): Promise<void> => {
       resolve();
     });
     request.addEventListener('error', () => {
-      console.log(request.error);
+      console.debug(request.error);
       resolve();
     });
   });
@@ -50,7 +50,7 @@ export const getOffline = async (id: IDBValidKey): Promise<Blob | null> => {
       resolve(request.result);
     });
     request.addEventListener('error', () => {
-      console.log(request.error);
+      console.debug(request.error);
       resolve(null);
     });
   });
@@ -70,7 +70,7 @@ export const deleteOffline = async (id: IDBValidKey): Promise<void> => {
       resolve();
     });
     request.addEventListener('error', () => {
-      console.log(request.error);
+      console.debug(request.error);
       resolve();
     });
   });
@@ -137,7 +137,7 @@ export const addOffline = async ({id, url}: AddOffline): Promise<void> => {
     } catch (err) {
       controller.abort();
       delete offline.downloads[id];
-      console.log(err);
+      console.debug(err);
       resolve();
     }
   });

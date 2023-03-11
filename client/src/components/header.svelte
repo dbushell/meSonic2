@@ -2,9 +2,11 @@
   import Browse from './icons/browse.svelte';
   import Settings from './icons/settings.svelte';
   import Bookmarks from './icons/bookmarks.svelte';
+  import Cassette from './icons/cassette.svelte';
 
   export let app: string;
-  export let isBrowse: boolean;
+  export let isMedia: boolean;
+  export let isPodcasts: boolean;
   export let isBookmarks: boolean;
   export let isSettings: boolean;
 </script>
@@ -33,11 +35,22 @@
         <a
           href="/"
           class="nav-link"
-          class:active={isBrowse}
-          aria-current={isBrowse ? 'page' : 'false'}
+          class:active={isPodcasts}
+          aria-current={isPodcasts ? 'page' : 'false'}
         >
           <Browse />
-          <span class="visually-hidden">Browse</span>
+          <span class="visually-hidden">Podcasts</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          href="/audiobooks"
+          class="nav-link"
+          class:active={isMedia}
+          aria-current={isMedia ? 'page' : 'false'}
+        >
+          <Cassette />
+          <span class="visually-hidden">Media</span>
         </a>
       </li>
       <li class="nav-item">

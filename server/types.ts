@@ -1,3 +1,108 @@
+export interface ArtistEntry {
+  path: string;
+  name: string;
+  albums: AlbumEntry[];
+}
+
+export interface AlbumEntry {
+  path: string;
+  name: string;
+  songs: SongEntry[];
+}
+
+export interface SongEntry {
+  path: string;
+  name: string;
+}
+
+export interface Artist {
+  [key: string]: string | number | Album[] | undefined;
+  id: string;
+  created_at: string;
+  modified_at: string;
+  name: string;
+  path: string;
+  album_count: number;
+  albums?: Album[];
+}
+
+export interface GetArtist {
+  id?: string;
+  path?: string;
+  albums?: boolean;
+  songs?: boolean;
+}
+
+export interface AddArtist {
+  name: string;
+  path: string;
+}
+
+export interface Album {
+  [key: string]: string | number | Song[] | Artist | undefined;
+  id: string;
+  created_at: string;
+  modified_at: string;
+  artist_id: string;
+  name: string;
+  path: string;
+  song_count: number;
+  songs?: Song[];
+  artist?: Artist;
+}
+
+export interface GetAlbum {
+  id?: string;
+  path?: string;
+  artist_id?: string;
+  artists?: boolean;
+  songs?: boolean;
+  bookmarks?: boolean;
+}
+
+export interface AddAlbum {
+  artist_id: string;
+  name: string;
+  path: string;
+}
+
+export interface Song {
+  [key: string]: string | number | Artist | Album | Bookmark[] | undefined;
+  id: string;
+  created_at: string;
+  modified_at: string;
+  artist_id: string;
+  album_id: string;
+  name: string;
+  path: string;
+  mimetype: string;
+  duration: number;
+  size: number;
+  artist?: Artist;
+  album?: Album;
+  bookmarks?: Bookmark[];
+}
+
+export interface GetSong {
+  id?: string;
+  path?: string;
+  artist_id?: string;
+  album_id?: string;
+  artists?: boolean;
+  albums?: boolean;
+  bookmarks?: boolean;
+}
+
+export interface AddSong {
+  artist_id: string;
+  album_id: string;
+  name: string;
+  path: string;
+  mimetype: string;
+  duration: number;
+  size: number;
+}
+
 export interface Podcast {
   [key: string]: string | number | Episode[] | Metadata[] | undefined;
   id: string;
@@ -11,7 +116,6 @@ export interface Podcast {
 }
 
 export interface GetPodcast {
-  [key: string]: string | boolean | undefined;
   id?: string;
   url?: string;
   episodes?: boolean;
@@ -20,7 +124,6 @@ export interface GetPodcast {
 }
 
 export interface AddPodcast {
-  [key: string]: string;
   id: string;
   modified_at: string;
   url: string;
@@ -28,7 +131,6 @@ export interface AddPodcast {
 }
 
 export interface UpdatePodcast {
-  [key: string]: string | undefined;
   id: string;
   modified_at?: string;
   url?: string;
@@ -58,7 +160,6 @@ export interface Episode {
 }
 
 export interface GetEpisode {
-  [key: string]: string | boolean | undefined;
   id?: string;
   url?: string;
   parent_id?: string;
@@ -68,7 +169,6 @@ export interface GetEpisode {
 }
 
 export interface AddEpisode {
-  [key: string]: string | number;
   id: string;
   modified_at: string;
   parent_id: string;
@@ -80,7 +180,6 @@ export interface AddEpisode {
 }
 
 export interface UpdateEpisode {
-  [key: string]: string | number | undefined;
   id: string;
   modified_at?: string;
   url?: string;
@@ -91,37 +190,39 @@ export interface UpdateEpisode {
 }
 
 export interface Bookmark {
-  [key: string]: string | number | Episode | undefined;
+  [key: string]: string | number | Song | Episode | undefined;
   id: string;
   created_at: string;
   modified_at: string;
   parent_id: string;
+  parent_type: string;
   position: number;
-  parent?: Episode;
+  parent?: Song | Episode;
 }
 
 export interface GetBookmark {
-  [key: string]: string | boolean | undefined;
   id?: string;
   parent_id?: string;
+  songs?: boolean;
+  albums?: boolean;
+  artists?: boolean;
   episodes?: boolean;
   podcasts?: boolean;
 }
 
 export interface AddBookmark {
-  [key: string]: string | number;
   parent_id: string;
+  parent_type: string;
   position: number;
 }
 
 export interface RemoveBookmark {
-  [key: string]: string | undefined;
   id?: string;
   parent_id?: string;
+  parent_type?: string;
 }
 
 export interface UpdateBookmark {
-  [key: string]: string | number | undefined;
   id: string;
   position?: number;
 }
@@ -138,14 +239,12 @@ export interface Metadata {
 }
 
 export interface GetMetadata {
-  [key: string]: string | undefined;
   id?: string;
   key?: string;
   parent_id?: string;
 }
 
 export interface AddMetadata {
-  [key: string]: string;
   parent_id: string;
   parent_type: string;
   key: string;
@@ -153,13 +252,11 @@ export interface AddMetadata {
 }
 
 export interface RemoveMetadata {
-  [key: string]: string | undefined;
   id?: string;
   parent_id?: string;
 }
 
 export interface UpdateMetadata {
-  [key: string]: string;
   id: string;
   key: string;
   value: string;

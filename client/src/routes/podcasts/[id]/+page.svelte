@@ -13,10 +13,10 @@
   $: podcasts = data.podcasts;
   $: episodes = podcasts.length ? podcasts[0].episodes ?? [] : [];
 
-  $: song = $playerStore;
+  $: player = $playerStore;
 
   const onSong = (episode: Episode) => {
-    playStore.set(episode.id);
+    playStore.set({id: episode.id, type: 'episode'});
   };
 
   const cached = (episode: Episode) => {
@@ -24,7 +24,7 @@
   };
 
   const playing = (episode: Episode) => {
-    return song && song.id === episode.id;
+    return player && player.id === episode.id;
   };
 
   const played = (episode: Episode) => {
@@ -36,7 +36,7 @@
   };
 
   const className = (episode: Episode) => {
-    if (song && song.id === episode.id) {
+    if (player && player.id === episode.id) {
       return 'text-primary';
     } else if (played(episode)) {
       return 'text-success';
@@ -106,8 +106,10 @@
             <div
               class="progress-bar bg-success"
               role="progressbar"
-              style="width: {progress(item.bookmarks[0], item)}%;"
-              aria-valuenow={Math.round(progress(item.bookmarks[0], item))}
+              style="width: {progress(item.bookmarks[0], item.duration)}%;"
+              aria-valuenow={Math.round(
+                progress(item.bookmarks[0], item.duration)
+              )}
               aria-valuemin={0}
               aria-valuemax={100}
             />

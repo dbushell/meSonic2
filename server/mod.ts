@@ -24,6 +24,16 @@ for (const feed of feeds) {
 await Promise.all(tasks);
 
 timer.setTimer(
+  'media sync',
+  timer.HOUR,
+  async () => {
+    await db.syncMedia();
+  },
+  true,
+  true
+);
+
+timer.setTimer(
   'podcast sync',
   timer.HOUR,
   async () => {

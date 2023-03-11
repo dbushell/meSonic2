@@ -1,6 +1,7 @@
 import * as log from 'log';
 import * as uuid from 'uuid';
-import {db, getEpisode} from './mod.ts';
+import {BindValue} from 'sqlite3';
+import {db, getSong, getEpisode} from './mod.ts';
 import {
   Bookmark,
   GetBookmark,
@@ -32,13 +33,19 @@ export const getBookmark = (params: GetBookmark = {}): Bookmark[] => {
     } else {
       sql += ' ORDER BY datetime(modified_at) DESC';
     }
-    const {episodes, podcasts} = params;
+    const {songs, albums, artists, episodes, podcasts} = params;
+    delete params.songs;
+    delete params.albums;
+    delete params.artists;
     delete params.episodes;
     delete params.podcasts;
     const query = db.prepare(sql);
-    const bookmarks = query.all<Bookmark>(params);
-    if (episodes) {
-      for (const bookmark of bookmarks) {
+    const bookmarks = query.all<Bookmark>(params as Record<string, BindValue>);
+    for (const bookmark of bookmarks) {
+      if (songs && bookmark.parent_type === 'song') {
+        bookmark.parent = getSong({id: bookmark.parent_id, albums, artists})[0];
+      }
+      if (episodes && bookmark.parent_type === 'episode') {
         bookmark.parent = getEpisode({id: bookmark.parent_id, podcasts})[0];
       }
     }
@@ -49,7 +56,11 @@ export const getBookmark = (params: GetBookmark = {}): Bookmark[] => {
   }
 };
 
-export const addBookmark = ({parent_id, position}: AddBookmark): boolean => {
+export const addBookmark = ({
+  parent_id,
+  parent_type,
+  position
+}: AddBookmark): boolean => {
   if (!uuid.validate(parent_id)) {
     log.warning(`${emoji} Invalid parent ID (${parent_id})`);
     return false;
@@ -64,13 +75,14 @@ export const addBookmark = ({parent_id, position}: AddBookmark): boolean => {
     }
     log.getLogger('debug').debug(`${emoji} Add bookmark (for ${parent_id})`);
     const query = db.prepare(
-      'INSERT INTO bookmarks (id, parent_id, position) \
-        VALUES (:id, :parent_id, :position)'
+      'INSERT INTO bookmarks (id, parent_id, parent_type, position) \
+        VALUES (:id, :parent_id, :parent_type, :position)'
     );
     const id = crypto.randomUUID();
     const changes = query.run({
       id,
       parent_id,
+      parent_type,
       position
     });
     return changes > 0;

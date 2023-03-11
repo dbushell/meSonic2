@@ -4,6 +4,10 @@ import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 import * as env from '../library/env.ts';
 
+export * from './media.ts';
+export * from './artist.ts';
+export * from './album.ts';
+export * from './song.ts';
 export * from './podcast.ts';
 export * from './episode.ts';
 export * from './bookmark.ts';
@@ -19,22 +23,31 @@ await fs.ensureDir(dbDir);
 
 export const db = new sqlite3.Database(dbPath);
 
-log.info(`${emoji} DB: ${dbPath}`);
-log.info(`${emoji} sqlite: ${db.prepare('SELECT sqlite_version()').value()}`);
+let ver = db.prepare('PRAGMA user_version').value<number[]>();
 
-const ver = db.prepare('PRAGMA user_version').value<number[]>();
+log.info(`${emoji} DB (${ver}): ${dbPath}`);
+log.info(`${emoji} SQLite: ${db.prepare('SELECT sqlite_version()').value()}`);
 
-if (!ver || ver[0] === 0) {
-  try {
+try {
+  if (!ver || ver[0] === 0) {
+    log.info(`${emoji} Exec schema 001`);
     const sql = await Deno.readTextFile(
       path.join(Deno.cwd(), 'server/schema/001.sql')
     );
-    const code = db.exec(sql);
-    log.info(`${emoji} Exec schema 001 (${code})`);
-  } catch (err) {
-    log.critical(err);
-    Deno.exit();
+    db.exec(sql);
+    ver = [1];
   }
+  if (ver && ver[0] === 1) {
+    log.info(`${emoji} Exec schema 002`);
+    const sql = await Deno.readTextFile(
+      path.join(Deno.cwd(), 'server/schema/002.sql')
+    );
+    db.exec(sql);
+    ver = [2];
+  }
+} catch (err) {
+  log.critical(err);
+  Deno.exit();
 }
 
 export const close = () => {

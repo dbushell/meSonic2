@@ -1,5 +1,12 @@
 <script lang="ts">
-  import type {Bookmark, Episode} from '$apiTypes';
+  import type {
+    Bookmark,
+    Song,
+    Album,
+    Artist,
+    Episode,
+    Podcast
+  } from '$apiTypes';
   import type {PageData} from './$types';
   import {PUBLIC_API_URL} from '$env/static/public';
   import {
@@ -15,19 +22,35 @@
 
   export let data: PageData;
 
-  // const bookmarks: Bookmark[] = data.bookmarks;
   $: bookmarks = [...data.bookmarks];
 
-  const parentEpisode = (item: Bookmark) => {
-    return item.parent!;
+  const parentSong = (bookmark: Bookmark): Song => {
+    return bookmark.parent as Song;
   };
 
-  const parentPodcast = (item: Bookmark) => {
-    return item.parent!.parent!;
+  const parentAlbum = (bookmark: Bookmark): Album => {
+    return bookmark.parent!.album as Album;
   };
 
-  const onSong = (episode: Episode) => {
-    playStore.set(episode.id);
+  const parentArtist = (bookmark: Bookmark): Artist => {
+    return bookmark.parent!.artist as Artist;
+  };
+
+  const parentEpisode = (bookmark: Bookmark): Episode => {
+    return bookmark.parent as Episode;
+  };
+
+  const parentPodcast = (bookmark: Bookmark): Podcast => {
+    return bookmark.parent!.parent as Podcast;
+  };
+
+  const onSong = (bookmark: Bookmark) => {
+    if (bookmark.parent_type === 'song') {
+      playStore.set({id: bookmark.parent_id, type: 'song'});
+    }
+    if (bookmark.parent_type === 'episode') {
+      playStore.set({id: bookmark.parent_id, type: 'episode'});
+    }
   };
 
   const onDelete = async (bookmark: Bookmark) => {
@@ -49,6 +72,7 @@
       button.blur();
     }
     const url = new URL(`/audio/${bookmark.parent_id}`, PUBLIC_API_URL);
+    url.searchParams.set('type', bookmark.parent_type);
     addOffline({id: bookmark.parent_id, url});
   };
 </script>
@@ -66,18 +90,22 @@
         class="list-group-item d-flex flex-wrap justify-content-between align-items-center"
       >
         <h3 class="mt-1 mb-0 h6 lh-base">
-          <img
-            alt={parentPodcast(item).title}
-            src={new URL(`/artwork/${parentPodcast(item).id}`, PUBLIC_API_URL)
-              .href}
-            class="d-inline-block align-top rounded overflow-hidden me-1"
-            width="24"
-            height="24"
-            loading="lazy"
-          />
-          <span>{parentEpisode(item).title}</span>
+          {#if item.parent_type === 'song'}
+            {parentSong(item).name}
+          {/if}
+          {#if item.parent_type === 'episode'}
+            <img
+              alt={parentPodcast(item).title}
+              src={new URL(`/artwork/${parentPodcast(item).id}`, PUBLIC_API_URL)
+                .href}
+              class="d-inline-block align-top rounded overflow-hidden me-1"
+              width="24"
+              height="24"
+              loading="lazy"
+            />
+            <span>{parentEpisode(item).title}</span>
+          {/if}
         </h3>
-
         <div
           class="w-100 d-flex flex-wrap justify-content-between align-items-center"
         >
@@ -87,12 +115,24 @@
             >
               {formatTime(item.position / 1000)}
             </span>
-            <a
-              href={`/podcasts/${parentPodcast(item).id}`}
-              class="text-body-secondary fs-7"
-            >
-              {parentPodcast(item).title}
-            </a>
+            {#if item.parent_type === 'song'}
+              <a
+                href={`/audiobooks/${parentArtist(item).id}/${
+                  parentAlbum(item).id
+                }`}
+                class="text-body-secondary fs-7"
+              >
+                {parentAlbum(item).name}
+              </a>
+            {/if}
+            {#if item.parent_type === 'episode'}
+              <a
+                href={`/podcasts/${parentPodcast(item).id}`}
+                class="text-body-secondary fs-7"
+              >
+                {parentPodcast(item).title}
+              </a>
+            {/if}
           </p>
           <div class="d-flex mt-2 mb-1">
             {#if $offlineStore.cached.includes(item.parent_id)}
@@ -117,7 +157,7 @@
               </button>
             {/if}
             <button
-              on:click={() => onSong(parentEpisode(item))}
+              on:click={() => onSong(item)}
               class="btn me-2 btn-sm btn-outline-success"
               type="button"
             >
@@ -151,8 +191,8 @@
           <div
             class="progress-bar bg-success"
             role="progressbar"
-            style="width: {progress(item, parentEpisode(item))}%;"
-            aria-valuenow={Math.round(progress(item, parentEpisode(item)))}
+            style="width: {progress(item)}%;"
+            aria-valuenow={Math.round(progress(item))}
             aria-valuemin={0}
             aria-valuemax={100}
           />

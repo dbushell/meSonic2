@@ -209,7 +209,7 @@ export const fetchFromCache = async (item: CacheItem): Promise<boolean> => {
   }
   const cached = cacheMeta[id];
   if (cached.name !== name) {
-    log.warning(`Name mismatch "${options.name}" : "${cached.name}" (${id})`);
+    log.warning(`Name mismatch "${name}" : "${cached.name}" (${id})`);
     delete cacheMeta[id];
     return false;
   }

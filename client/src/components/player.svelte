@@ -1,9 +1,10 @@
 <script lang="ts">
   import {onDestroy} from 'svelte';
-  import type {Episode} from '$apiTypes';
+  import type {Song, Episode} from '$apiTypes';
   import {PUBLIC_API_URL} from '$env/static/public';
   import {
     playStore,
+    nextStore,
     playerStore,
     settingStore,
     offlineStore,
@@ -12,16 +13,21 @@
   } from '$lib/stores';
   import {getOffline, deleteOffline} from '$lib/offline';
   import {formatTime} from '$lib/utils';
-  import Wifioff from '$components/icons/wifioff.svelte';
+  import PlayerSong from './player-song.svelte';
+  import PlayerEpisode from './player-episode.svelte';
   import RewindButton from '$components/rewind.svelte';
   import ForwardButton from '$components/forward.svelte';
   import PauseButton from '$components/pause.svelte';
   import PlayButton from '$components/play.svelte';
   import Atom from '$components/atom.svelte';
 
+  $: play = $playStore;
+  $: next = $nextStore;
+  $: player = $playerStore;
+
+  let oldPlayer: Song | Episode | null = null;
   let audio: HTMLAudioElement;
   let audioSrc: string = '';
-  let song: Episode | null;
 
   let bookmarkInterval: number;
   let seekingTimeout: number;
@@ -60,10 +66,10 @@
   };
 
   const setBookmark = () => {
-    if (song && audio) {
+    if (player && audio) {
       const position = audio.currentTime * 1000;
-      if (position !== onLoadedPosition) {
-        addBookmark({parent_id: song.id, position});
+      if (play && position !== onLoadedPosition) {
+        addBookmark({parent_id: player.id, parent_type: play.type, position});
       }
     }
   };
@@ -84,45 +90,48 @@
   );
 
   unsubscribe.push(
-    playerStore.subscribe(async (newSong) => {
-      if (!newSong) {
-        song = null;
+    playerStore.subscribe(async (newPlayer) => {
+      if (!newPlayer) {
+        oldPlayer = null;
         resetAudio();
         return;
       }
-      const cached = $offlineStore.cached.includes(newSong.id);
-      if (isOffline && !cached) {
-        alert('Cannot play in offline mode');
-        playStore.set('');
-        return;
-      }
-      if (audioSrc) {
+      if (/^blob:/.test(audioSrc)) {
         URL.revokeObjectURL(audioSrc);
       }
+      const cached = $offlineStore.cached.includes(newPlayer.id);
+      if (isOffline && !cached) {
+        alert('Cannot play in offline mode');
+        playStore.set(undefined);
+        return;
+      }
       if (cached) {
-        const blob = await getOffline(newSong.id);
+        const blob = await getOffline(newPlayer.id);
         if (blob) {
           audioSrc = URL.createObjectURL(blob);
         } else {
           console.error('Blob not found');
-          playStore.set('');
+          playStore.set(undefined);
           return;
         }
       } else {
-        audioSrc = new URL(`/audio/${newSong.id}`, PUBLIC_API_URL).href;
-      }
-      if (song) {
-        if (song.id !== newSong.id) {
-          if (isPlaying) {
-            setBookmark();
-          }
-          song = newSong;
-          resetAudio();
+        if (play?.type === 'song') {
+          const url = new URL(`/audio/${newPlayer.id}`, PUBLIC_API_URL);
+          url.searchParams.set('type', 'song');
+          audioSrc = url.href;
         }
+        if (play?.type === 'episode') {
+          const url = new URL(`/audio/${newPlayer.id}`, PUBLIC_API_URL);
+          url.searchParams.set('type', 'episode');
+          audioSrc = url.href;
+        }
+      }
+      if (oldPlayer && oldPlayer.id === newPlayer.id) {
+        setBookmark();
       } else {
-        song = newSong;
         resetAudio();
       }
+      oldPlayer = newPlayer;
     })
   );
 
@@ -135,9 +144,8 @@
     rangeEnd = formatTime(rangeMax);
     audio.playbackRate = playbackRate;
     onLoadedPosition = 0;
-
-    if (song?.bookmarks?.length) {
-      onLoadedPosition = song.bookmarks[0].position;
+    if (player?.bookmarks?.length) {
+      onLoadedPosition = player.bookmarks[0].position;
       audio.currentTime = onLoadedPosition / 1000;
     } else {
       audio.currentTime = 0;
@@ -178,9 +186,16 @@
 
   const onEnded = () => {
     isPlaying = false;
-    if (song) {
-      removeBookmark({parent_id: song.id});
-      deleteOffline(song.id);
+    if (/^blob:/.test(audioSrc)) {
+      URL.revokeObjectURL(audioSrc);
+    }
+    if (!play) return;
+    removeBookmark({parent_id: play.id, parent_type: play.type});
+    deleteOffline(play.id);
+    if (next) {
+      playStore.set(next);
+    } else {
+      playStore.set(undefined);
     }
   };
 
@@ -209,44 +224,20 @@
   class="container-fluid mt-0 mb-3 py-3 bg-body border-bottom position-sticky top-0"
 >
   <div class="d-flex flex-wrap align-items-center mb-1">
-    <h2 class="visually-hidden">Audio Player</h2>
-    {#if song}
-      <p class="h6 lh-base m-0 me-auto">
-        <img
-          alt={song.title}
-          src={new URL(`/artwork/${song.parent_id}`, PUBLIC_API_URL).href}
-          class="d-inline-block align-top rounded overflow-hidden me-1"
-          width="24"
-          height="24"
-          loading="lazy"
-        />
-        {#if !isLoaded}
-          <span role="status" class="spinner-border spinner-border-sm me-1">
-            <span class="visually-hidden">Loading…</span>
-          </span>
+    {#if play}
+      {#if play.id === player?.id}
+        <h2 class="visually-hidden">Audio Player</h2>
+        {#if play.type === 'song'}
+          <PlayerSong {isLoaded} {isOffline} />
+        {:else if play.type === 'episode'}
+          <PlayerEpisode {isLoaded} {isOffline} />
         {/if}
-        {#if isOffline}<Wifioff />{/if}
-        <span>{song.title}</span>
-      </p>
-      {#if song.parent}
-        <div class="d-flex flex-wrap">
-          <a
-            href={`/podcasts/${song.parent_id}`}
-            class="text-body-secondary fs-7 me-2"
-          >
-            {song.parent.title}
-          </a>
-        </div>
+      {:else}
+        <p class="h6 lh-base m-0 me-auto">
+          <span role="status" class="spinner-border spinner-border-sm me-1" />
+          <span>Loading...</span>
+        </p>
       {/if}
-    {:else}
-      <p class="h6 lh-base m-0 text-body-secondary">
-        {#if isOffline}
-          <Wifioff />
-          <span>Offline mode…</span>
-        {:else}
-          <span>Not playing…</span>
-        {/if}
-      </p>
     {/if}
   </div>
   <div
@@ -315,7 +306,7 @@
       </div>
     </div>
   </div>
-  {#if song}
+  {#if player && audioSrc}
     <audio
       bind:this={audio}
       {playbackRate}

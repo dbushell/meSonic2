@@ -1,5 +1,6 @@
 import * as log from 'log';
 import * as uuid from 'uuid';
+import {BindValue} from 'sqlite3';
 import {db} from './mod.ts';
 import {
   Metadata,
@@ -40,7 +41,7 @@ export const getMetadata = (params: GetMetadata = {}): Metadata[] => {
       sql += ' ORDER BY datetime(modified_at) DESC';
     }
     const query = db.prepare(sql);
-    const metadata = query.all<Metadata>(params);
+    const metadata = query.all<Metadata>(params as Record<string, BindValue>);
     return metadata;
   } catch (err) {
     log.error(err);

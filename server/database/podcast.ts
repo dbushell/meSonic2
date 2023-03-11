@@ -1,5 +1,6 @@
 import * as log from 'log';
 import * as uuid from 'uuid';
+import {BindValue} from 'sqlite3';
 import {db, getEpisode, getMetadata} from './mod.ts';
 import {Podcast, AddPodcast, GetPodcast, UpdatePodcast} from '../types.ts';
 
@@ -27,7 +28,7 @@ export const getPodcast = (params: GetPodcast = {}): Podcast[] => {
     delete params.bookmarks;
     delete params.metadata;
     const query = db.prepare(sql);
-    const podcasts = query.all<Podcast>(params);
+    const podcasts = query.all<Podcast>(params as Record<string, BindValue>);
     if (episodes) {
       for (const podcast of podcasts) {
         podcast.episodes =
@@ -59,7 +60,6 @@ export const addPodcast = ({
   try {
     const podcasts = getPodcast({url});
     if (podcasts.length > 0) return false;
-    log.info(`${emoji} Add podcast (${url})`);
     const query = db.prepare(
       'INSERT INTO podcasts (id, modified_at, url, title) \
       VALUES (:id, :modified_at, :url, :title)'
@@ -90,7 +90,6 @@ export const removePodcast = (id: string): boolean => {
   try {
     const podcasts = getPodcast({id});
     if (!podcasts.length) return false;
-    log.warning(`${emoji} Remove podcast (${podcasts[0].url})`);
     const query = db.prepare('DELETE FROM podcasts WHERE id=:id');
     const changes = query.run({id});
     if (changes > 0) {
@@ -135,3 +134,13 @@ export const updatePodcast = (params: UpdatePodcast): boolean => {
     return false;
   }
 };
+
+addEventListener('podcast:add', ((event: CustomEvent<Podcast>) => {
+  const podcast = event.detail;
+  log.warning(`${emoji} Add podcast (${podcast.url})`);
+}) as EventListener);
+
+addEventListener('podcast:remove', ((event: CustomEvent<Podcast>) => {
+  const podcast = event.detail;
+  log.warning(`${emoji} Remove podcast (${podcast.url})`);
+}) as EventListener);

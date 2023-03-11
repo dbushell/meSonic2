@@ -40,6 +40,8 @@ export const formatDate = (date: Date) => {
 };
 
 // Return progress percentage
-export const progress = (bookmark: Bookmark, episode: Episode) => {
-  return (100 / episode.duration) * (bookmark.position / 1000);
+export const progress = (bookmark: Bookmark, duration?: number) => {
+  if (bookmark.parent) duration = bookmark.parent.duration;
+  if (!duration) return 0;
+  return (100 / duration) * (bookmark.position / 1000);
 };

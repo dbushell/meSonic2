@@ -7,13 +7,14 @@ const prefixes = ['APP', 'DENO'];
 
 const expected = [
   'APP_API_SECRET',
+  'APP_DATA_DIR',
+  'APP_MEDIA_DIR',
+  'APP_BUILD_DIR',
   'APP_ORIGIN',
-  'APP_PORT',
-  'APP_HOSTNAME',
   'APP_DEV',
   'APP_DEV_PORT',
-  'APP_DATA_DIR',
-  'APP_BUILD_DIR',
+  'APP_PORT',
+  'APP_HOSTNAME',
   'APP_LOG_LEVEL',
   'APP_LOG_LOCALE',
   'APP_PODCASTINDEX_USERAGENT',

@@ -1,5 +1,6 @@
 import * as log from 'log';
 import * as uuid from 'uuid';
+import {BindValue} from 'sqlite3';
 import * as cache from '../cache/mod.ts';
 import {db, getBookmark, getPodcast, getMetadata} from './mod.ts';
 import {
@@ -60,7 +61,7 @@ export const getEpisode = (params: GetEpisode = {}): Episode[] => {
     delete params.bookmarks;
     delete params.metadata;
     const query = db.prepare(sql);
-    const episodes = query.all<Episode>(params);
+    const episodes = query.all<Episode>(params as Record<string, BindValue>);
     if (podcasts) {
       for (const episode of episodes) {
         episode.parent = getPodcast({id: episode.parent_id})[0];
@@ -104,7 +105,6 @@ export const addEpisode = ({
   try {
     const episodes = getEpisode({url});
     if (episodes.length > 0) return false;
-    log.info(`${emoji} Add episode (${url})`);
     const query = db.prepare(
       'INSERT INTO episodes (id, modified_at, parent_id, url, title, duration, type, length) \
       VALUES (:id, :modified_at, :parent_id, :url, :title, :duration, :type, :length)'
@@ -140,7 +140,6 @@ export const removeEpisode = (id: string): boolean => {
     if (!id) return false;
     const episodes = getEpisode({id});
     if (!episodes.length) return false;
-    log.warning(`${emoji} Remove episode (${episodes[0].url})`);
     const query = db.prepare('DELETE FROM episodes WHERE id=:id');
     const changes = query.run({id});
     if (changes > 0) {
@@ -189,10 +188,18 @@ export const updateEpisode = (params: UpdateEpisode): boolean => {
   }
 };
 
+addEventListener('episode:add', ((event: CustomEvent<Episode>) => {
+  const episode = event.detail;
+  log.warning(`${emoji} Add episode (${episode.url})`);
+}) as EventListener);
+
+addEventListener('episode:remove', ((event: CustomEvent<Episode>) => {
+  const episode = event.detail;
+  log.warning(`${emoji} Remove episode (${episode.url})`);
+}) as EventListener);
+
 addEventListener('podcast:remove', ((event: CustomEvent<Podcast>) => {
   const podcast = event.detail;
   const episodes = getEpisode({parent_id: podcast.id});
-  episodes.forEach((episode) => {
-    removeEpisode(episode.id);
-  });
+  episodes.forEach((episode) => removeEpisode(episode.id));
 }) as EventListener);
