@@ -52,7 +52,7 @@
 </h2>
 <div class="list-group">
   {#if episodes.length === 0}
-    <div class="list-group-item bg-light-subtle text-body-secondary">
+    <div class="list-group-item text-body-secondary">
       No episodes found
     </div>
   {:else}

@@ -5,6 +5,7 @@
   import {playerStore} from '$lib/stores';
   import {formatDate} from '$lib/utils';
   import Headphones from '$components/icons/headphones.svelte';
+  import Settings from '$components/icons/settings.svelte';
 
   export let data: PageData;
 
@@ -20,15 +21,20 @@
   };
 </script>
 
-<h2 class="mb-3 fs-3">
+<h2 class="mb-3 fs-3 d-flex justify-content-between align-items-baseline">
   <a href="/podcasts" class="text-warning text-decoration-none"
     >{data.heading}</a
   >
+  <a href="/podcasts/settings" class="fs-6 text-body-emphasis text-decoration-none me-3"
+    >
+    <span class="fw-light me-2 text-body-secondary">settings</span>
+    <Settings />
+  </a>
 </h2>
 <div class="list-group">
   {#if podcasts.length === 0}
-    <div class="list-group-item bg-light-subtle text-body-secondary">
-      No podcasts found
+    <div class="list-group-item">
+      <a href="/podcasts/settings">No podcast feeds add one in settings</a>
     </div>
   {:else}
     {#each podcasts as item (item.id)}

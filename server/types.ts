@@ -137,6 +137,10 @@ export interface UpdatePodcast {
   title?: string;
 }
 
+export interface RemovePodcast {
+  id: string;
+}
+
 export interface Episode {
   [key: string]:
     | string

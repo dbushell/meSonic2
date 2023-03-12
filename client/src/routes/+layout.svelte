@@ -35,16 +35,16 @@
     }
   }
 
-  let isMedia: boolean;
   let isPodcasts: boolean;
+  let isMedia: boolean;
   let isBookmarks: boolean;
   let isSettings: boolean;
 
   $: {
+    isPodcasts = /^\/podcasts/.test($page.url.pathname);
     isMedia = /^\/audiobooks|albums/.test($page.url.pathname);
     isBookmarks = /^\/bookmarks/.test($page.url.pathname);
     isSettings = /^\/settings/.test($page.url.pathname);
-    isPodcasts = !(isMedia || isBookmarks || isSettings);
   }
 </script>
 

@@ -3,6 +3,7 @@ import * as env from './env.ts';
 import {serveDir} from 'file_server';
 import {getHeaders} from './handle.ts';
 
+// TODO: check build files exist
 const kit = [
   path.join(env.get('BUILD_DIR'), 'server/index.js'),
   path.join(env.get('BUILD_DIR'), 'server/manifest.js')

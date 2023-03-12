@@ -8,6 +8,7 @@ declare global {
     interface PageData {
       app: string;
       heading: string;
+      canonical: string;
     }
   }
 }

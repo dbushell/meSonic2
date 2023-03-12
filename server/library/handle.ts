@@ -1,7 +1,12 @@
 import * as env from './env.ts';
 import {serveFile} from 'file_server';
 import * as db from '../database/mod.ts';
-import {AddBookmark, Bookmark, RemoveBookmark} from '../types.ts';
+import {
+  RemovePodcast,
+  AddBookmark,
+  Bookmark,
+  RemoveBookmark
+} from '../types.ts';
 
 export {sveltekit} from './sveltekit.ts';
 
@@ -103,6 +108,24 @@ export const podcast = async (
   const metadata = url.searchParams.get('metadata') === 'true';
   const headers = getHeaders(request);
   headers.set('content-type', 'application/json');
+  if (request.method === 'POST') {
+    if (id === 'add') {
+      const body = (await request.json()) as {feed: string};
+      const podcast = await db.addPodcastByFeed(body.feed);
+      if (podcast) {
+        db.syncPodcast(podcast);
+        return new Response(JSON.stringify(podcast), {
+          headers: getHeaders(request)
+        });
+      }
+    }
+    if (id === 'remove') {
+      const body = (await request.json()) as RemovePodcast;
+      db.removePodcast(body);
+      return new Response(null, {headers: getHeaders(request)});
+    }
+    return error404(request);
+  }
   if (id === 'all') {
     return new Response(
       JSON.stringify(db.getPodcast({episodes, bookmarks, metadata})),

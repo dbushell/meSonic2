@@ -20,7 +20,6 @@ export APP_LOG_LEVEL=INFO
 
 deno run \
   --unstable \
-  --allow-run \
   --allow-env \
   --allow-read \
   --allow-write \

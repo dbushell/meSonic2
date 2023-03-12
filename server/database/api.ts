@@ -31,12 +31,13 @@ export const addPodcastByFeed = async (
       title: json.feed.title,
       modified_at: new Date(json.feed.lastUpdateTime * 1000).toISOString()
     };
-    const podcast = getPodcast({id: props.id});
+    let podcast = getPodcast({id: props.id});
     if (podcast.length) {
       updatePodcast(props);
     } else {
       addPodcast(props);
     }
+    podcast = getPodcast({id: props.id});
     return podcast[0];
   } catch (err) {
     log.error(err);

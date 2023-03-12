@@ -93,14 +93,19 @@ export const serve = async (options: ServeOptions) => {
           continue;
         }
         if (env.dev()) {
-          const vite = new URL(
+          const viteURL = new URL(
             `http://${env.get('HOSTNAME')}:${env.get('DEV_PORT')}`
           );
-          const response = await fetch(new URL(url.pathname, vite));
+          const kitURL = new URL(url.pathname, viteURL);
+          kitURL.search = url.search;
+          const response = await fetch(kitURL, request);
           respondWith(response).catch(maybe);
           continue;
         }
-        const response = handle.sveltekit(url, request).catch((err) => {
+        const skURL = new URL(url.pathname, env.get('ORIGIN'));
+        skURL.search = url.search;
+        const req = new Request(skURL, request);
+        const response = handle.sveltekit(url, req).catch((err) => {
           maybe(err);
           return error;
         });

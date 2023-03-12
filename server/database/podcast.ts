@@ -2,7 +2,13 @@ import * as log from 'log';
 import * as uuid from 'uuid';
 import {BindValue} from 'sqlite3';
 import {db, getEpisode, getMetadata} from './mod.ts';
-import {Podcast, AddPodcast, GetPodcast, UpdatePodcast} from '../types.ts';
+import {
+  Podcast,
+  AddPodcast,
+  GetPodcast,
+  UpdatePodcast,
+  RemovePodcast
+} from '../types.ts';
 
 const emoji = '🎙️ ';
 
@@ -82,7 +88,7 @@ export const addPodcast = ({
   }
 };
 
-export const removePodcast = (id: string): boolean => {
+export const removePodcast = ({id}: RemovePodcast): boolean => {
   if (!uuid.validate(id)) {
     log.warning(`${emoji} Invalid ID (${id})`);
     return false;

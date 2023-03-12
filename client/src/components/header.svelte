@@ -33,7 +33,7 @@
     <ul class="nav nav-tabs justify-content-end">
       <li class="nav-item">
         <a
-          href="/"
+          href="/podcasts"
           class="nav-link"
           class:active={isPodcasts}
           aria-current={isPodcasts ? 'page' : 'false'}

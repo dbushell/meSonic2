@@ -1,4 +1,3 @@
-import * as path from 'path';
 import * as env from './library/env.ts';
 import * as db from './database/mod.ts';
 import * as cache from './cache/mod.ts';
@@ -11,17 +10,6 @@ shutdown.setup();
 
 // Something is missing...
 if (!env.check()) await shutdown.now();
-
-const {feeds} = await import(path.join(env.get('DATA_DIR'), 'bootstrap.ts'));
-
-const tasks: Promise<unknown>[] = [];
-for (const feed of feeds) {
-  const podcast = db.getPodcast({url: feed});
-  if (!podcast.length) {
-    tasks.push(db.addPodcastByFeed(feed));
-  }
-}
-await Promise.all(tasks);
 
 timer.setTimer(
   'media sync',

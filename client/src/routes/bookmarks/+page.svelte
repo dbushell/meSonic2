@@ -80,7 +80,7 @@
 <h2 class="text-warning mb-3 fs-3">{data.heading}</h2>
 <div class="list-group">
   {#if bookmarks.length === 0}
-    <div class="list-group-item bg-light-subtle text-body-secondary">
+    <div class="list-group-item text-body-secondary">
       No bookmarks found
     </div>
   {:else}
