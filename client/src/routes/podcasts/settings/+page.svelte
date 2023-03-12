@@ -99,7 +99,7 @@
         />
         <button
           type="submit"
-          class="btn btn-sm btn-outline-danger"
+          class="btn btn-sm btn-outline-danger text-nowrap"
           disabled={item.id === isRemoving}
         >
           Remove

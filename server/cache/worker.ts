@@ -7,11 +7,8 @@ import * as base58 from 'base58';
 import * as mediaTypes from 'media_types';
 import * as env from '../library/env.ts';
 import * as timer from '../library/timer.ts';
-import * as brotli from '../wasm_brotli/pkg/wasm_brotli.js';
 import {CacheOptions, CacheItem, CacheMeta, CacheResponse} from '../types.ts';
 import {log} from './log.ts';
-
-await brotli.default();
 
 const cacheDir = path.join(env.get('DATA_DIR'), 'cache');
 
@@ -139,8 +136,9 @@ const handleDelete = async (name: string) => {
       }
     }
     await Deno.remove(cachePath);
+    log.warning(`Delete cache (${name})`);
   } catch {
-    log.warning(`Not cached (${name})`);
+    log.debug(`Not cached (${name})`);
   }
 };
 
@@ -229,17 +227,29 @@ export const fetchFromCache = async (item: CacheItem): Promise<boolean> => {
     body: null
   };
   if (cached.compressed) {
-    message.headers['content-encoding'] = 'br';
+    message.headers['content-encoding'] = 'gzip';
   }
   if (options.prefetch) {
     self.postMessage(message);
     return true;
   }
   log.debug(`Hit (${id})`);
-  const data = await Deno.readFile(item.path);
-  const body = cached.compressed ? brotli.decompress(data) : data;
-  message.body = body.buffer;
-  self.postMessage(message, [body.buffer]);
+  if (cached.compressed) {
+    const file = await Deno.open(item.path);
+    const stream = file.readable.pipeThrough(new DecompressionStream('gzip'));
+    let data = new Uint8Array(0);
+    for await (const chunk of stream) {
+      const newData = new Uint8Array(data.length + chunk.length);
+      newData.set(data);
+      newData.set(chunk, data.length);
+      data = newData;
+    }
+    message.body = data.buffer;
+  } else {
+    const data = await Deno.readFile(item.path);
+    message.body = data.buffer;
+  }
+  self.postMessage(message, [message.body]);
   return true;
 };
 
@@ -256,7 +266,7 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
     signal: item.controller.signal,
     headers
   });
-  if (!response.ok) {
+  if (!response.ok || !response.body) {
     throw new Error(`${response.status} ${response.statusText}`);
   }
   // Validate content type or infer from file extension
@@ -275,11 +285,6 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
       contentType = mediaTypes.contentType(ext) ?? '';
     }
   }
-  // Cache response using brotli compression
-  const body = new Uint8Array(await response.arrayBuffer());
-  const data = options.compress ? brotli.compress(body) : body;
-  await fs.ensureFile(item.path);
-  await Deno.writeFile(item.path, data);
   cacheMeta[id] = {
     contentType,
     name: item.name,
@@ -296,14 +301,31 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
     },
     body: null
   };
+  message.body = await response.arrayBuffer();
+  let cacheData = new Uint8Array(message.body);
   if (options.compress) {
-    message.headers['content-encoding'] = 'br';
+    message.headers['content-encoding'] = 'gzip';
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(cacheData);
+        controller.close();
+      }
+    }).pipeThrough(new CompressionStream('gzip'));
+    let data = new Uint8Array(0);
+    for await (const chunk of stream) {
+      const newData = new Uint8Array(data.length + chunk.length);
+      newData.set(data);
+      newData.set(chunk, data.length);
+      data = newData;
+    }
+    cacheData = data;
   }
+  await fs.ensureFile(item.path);
+  await Deno.writeFile(item.path, cacheData);
   if (options.prefetch) {
     self.postMessage(message);
   } else {
-    message.body = body.buffer;
-    self.postMessage(message, [body.buffer]);
+    self.postMessage(message, [message.body]);
   }
 };
 

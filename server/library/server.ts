@@ -98,7 +98,7 @@ export const serve = async (options: ServeOptions) => {
           );
           const kitURL = new URL(url.pathname, viteURL);
           kitURL.search = url.search;
-          const response = await fetch(kitURL, request);
+          const response = fetch(kitURL, request);
           respondWith(response).catch(maybe);
           continue;
         }
