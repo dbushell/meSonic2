@@ -1,13 +1,7 @@
 import * as log from 'log';
 import * as timer from '../library/timer.ts';
 import * as cache from '../cache/mod.ts';
-import {addPodcast, getPodcast, updatePodcast} from './podcast.ts';
-import {
-  addEpisode,
-  getEpisode,
-  removeEpisode,
-  updateEpisode
-} from './episode.ts';
+import * as db from '../database/mod.ts';
 import {Podcast, Episode} from '../types.ts';
 
 export const addPodcastByFeed = async (
@@ -31,13 +25,13 @@ export const addPodcastByFeed = async (
       title: json.feed.title,
       modified_at: new Date(json.feed.lastUpdateTime * 1000).toISOString()
     };
-    let podcast = getPodcast({id: props.id});
+    let podcast = db.getPodcast({id: props.id});
     if (podcast.length) {
-      updatePodcast(props);
+      db.updatePodcast(props);
     } else {
-      addPodcast(props);
+      db.addPodcast(props);
     }
-    podcast = getPodcast({id: props.id});
+    podcast = db.getPodcast({id: props.id});
     return podcast[0];
   } catch (err) {
     log.error(err);
@@ -103,7 +97,7 @@ export const syncPodcast = async (podcast: Podcast): Promise<unknown> => {
     }
     tasks.push(fetchArtwork(podcast));
     const episodeIds = new Set<string>();
-    const oldEpisodes = getEpisode({parent_id: podcast.id});
+    const oldEpisodes = db.getEpisode({parent_id: podcast.id});
     // deno-lint-ignore no-explicit-any
     meta.items.forEach((item: any) => {
       const props = {
@@ -121,15 +115,17 @@ export const syncPodcast = async (podcast: Podcast): Promise<unknown> => {
         episodeIds.add(episode.id);
         // Only update if a property has changed
         if (
-          Object.entries(props).find(([key, value]) => episode[key] !== value)
+          Object.entries(props).find(
+            ([key, value]) => episode[key as keyof Episode] !== value
+          )
         ) {
-          updateEpisode({
+          db.updateEpisode({
             id: episode.id,
             ...props
           });
         }
       } else {
-        addEpisode({
+        db.addEpisode({
           id: crypto.randomUUID(),
           parent_id: podcast.id,
           ...props
@@ -140,11 +136,11 @@ export const syncPodcast = async (podcast: Podcast): Promise<unknown> => {
     oldEpisodes
       .filter((e) => !episodeIds.has(e.id))
       .forEach((e) => {
-        removeEpisode(e.id);
+        db.removeEpisode(e.id);
       });
     // Fetch new episode audio (latest only?)
-    const newEpisodes = getEpisode({parent_id: podcast.id});
-    updatePodcast({
+    const newEpisodes = db.getEpisode({parent_id: podcast.id});
+    db.updatePodcast({
       id: podcast.id,
       modified_at: newEpisodes[0].modified_at
     });

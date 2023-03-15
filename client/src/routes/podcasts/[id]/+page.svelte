@@ -52,9 +52,7 @@
 </h2>
 <div class="list-group">
   {#if episodes.length === 0}
-    <div class="list-group-item text-body-secondary">
-      No episodes found
-    </div>
+    <div class="list-group-item text-body-secondary">No episodes found</div>
   {:else}
     {#each episodes as item (item.id)}
       <button

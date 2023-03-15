@@ -1,7 +1,7 @@
 export interface SettingStore {
-  [key: string]: string | boolean;
-  rate: string;
   offline: boolean;
+  rate: string;
+  skip: number;
 }
 
 export interface PlayStore {

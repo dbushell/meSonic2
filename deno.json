@@ -1,4 +1,3 @@
 {
-  "importMap": "server/imports.json",
-  "lock": "./data/deno.lock"
+  "importMap": "server/imports.json"
 }

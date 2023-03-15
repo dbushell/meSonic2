@@ -1,6 +1,7 @@
 <script lang="ts">
   import {onDestroy} from 'svelte';
   import type {Song, Episode} from '$apiTypes';
+  import {browser} from '$app/environment';
   import {PUBLIC_API_URL} from '$env/static/public';
   import {
     playStore,
@@ -11,7 +12,7 @@
     addBookmark,
     removeBookmark
   } from '$lib/stores';
-  import {getOffline, deleteOffline} from '$lib/offline';
+  import {getOffline, removeOffline} from '$lib/offline';
   import {formatTime} from '$lib/utils';
   import PlayerSong from './player-song.svelte';
   import PlayerEpisode from './player-episode.svelte';
@@ -191,7 +192,7 @@
     }
     if (!play) return;
     removeBookmark({parent_id: play.id, parent_type: play.type});
-    deleteOffline(play.id);
+    removeOffline(play.id);
     if (next) {
       playStore.set(next);
     } else {
@@ -217,6 +218,19 @@
       return (ev.returnValue = '...');
     }
   };
+
+  const skipForward = () => {
+    audio.currentTime += $settingStore.skip;
+  };
+  const skipBackward = () => {
+    audio.currentTime -= $settingStore.skip;
+  };
+  if (browser) {
+    navigator.mediaSession.setActionHandler('seekbackward', skipBackward);
+    navigator.mediaSession.setActionHandler('seekforward', skipForward);
+    navigator.mediaSession.setActionHandler('previoustrack', skipBackward);
+    navigator.mediaSession.setActionHandler('nexttrack', skipForward);
+  }
 </script>
 
 <svelte:window on:beforeunload|capture={onBeforeUnload} />
@@ -291,8 +305,9 @@
         role="toolbar"
       >
         <RewindButton
+          skip={$settingStore.skip}
           isDisabled={!isLoaded}
-          on:click={() => (audio.currentTime -= 15)}
+          on:click={skipBackward}
         />
         {#if isPlaying}
           <PauseButton isDisabled={!isLoaded} on:click={() => audio.pause()} />
@@ -300,8 +315,9 @@
           <PlayButton isDisabled={!isLoaded} on:click={() => audio.play()} />
         {/if}
         <ForwardButton
+          skip={$settingStore.skip}
           isDisabled={!isLoaded}
-          on:click={() => (audio.currentTime += 15)}
+          on:click={skipForward}
         />
       </div>
     </div>

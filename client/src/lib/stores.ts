@@ -8,9 +8,10 @@ import type {
   Album,
   Episode,
   AddBookmark,
-  RemoveBookmark
+  RemoveBookmark,
+  UnplayedBookmark
 } from '$apiTypes';
-import {loadIndexedDB} from './offline';
+import {loadIndexedDB} from '$lib/offline';
 import {PUBLIC_API_URL} from '$env/static/public';
 
 export const offlineStore: Writable<OfflineStore> = writable({
@@ -82,7 +83,8 @@ export const nextStore: Readable<PlayStore | undefined> = derived(
       set(undefined);
       return;
     }
-    const url = new URL(`/api/album/${$playerStore?.album_id}`, PUBLIC_API_URL);
+    const song = $playerStore as Song;
+    const url = new URL(`/api/album/${song.album_id}`, PUBLIC_API_URL);
     url.searchParams.set('songs', 'true');
     fetch(url)
       .then(async (response) => {
@@ -106,21 +108,26 @@ export const nextStore: Readable<PlayStore | undefined> = derived(
   }
 );
 
-const defaultSetting: SettingStore = {rate: '1.0', offline: false};
-let initialSetting: SettingStore = defaultSetting;
+const defaultSetting: SettingStore = {
+  offline: false,
+  rate: '1.0',
+  skip: 15
+} as const;
+
+let initialSetting: SettingStore = {...defaultSetting};
 
 if (browser) {
   try {
-    initialSetting = JSON.parse(
-      globalThis.localStorage.getItem('setting')!
-    ) as SettingStore;
-    for (const key of Object.keys(defaultSetting)) {
+    initialSetting = JSON.parse(globalThis.localStorage.getItem('setting')!);
+    for (const key of Object.keys(defaultSetting) as Array<
+      keyof SettingStore
+    >) {
       if (!Object.hasOwn(initialSetting, key)) {
-        initialSetting[key] = defaultSetting[key];
+        Object.assign(initialSetting, {[key]: defaultSetting[key]});
       }
     }
   } catch {
-    initialSetting = defaultSetting;
+    initialSetting = {...defaultSetting};
   }
 }
 
@@ -164,25 +171,84 @@ export const removeBookmark = async (data: RemoveBookmark): Promise<void> => {
   }
 };
 
+export const unplayedBookmark = async (
+  data: UnplayedBookmark
+): Promise<void> => {
+  const url = new URL(`/api/bookmark/unplayed`, PUBLIC_API_URL);
+  const response = await fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: {
+      'content-type': 'application/json'
+    }
+  });
+  if (response.ok) {
+    invalidate(invalidateBookmark);
+  } else {
+    console.debug(response);
+  }
+};
+
 const invalidateBookmark = (url: URL): boolean => {
-  const play = get(playStore);
-  const player = get(playerStore);
-  if (!play || !player) return false;
   if (url.pathname.startsWith(`/api/bookmark/all`)) {
     return true;
   }
+  const play = get(playStore);
+  const player = get(playerStore);
+  if (!play || !player) return false;
   if (play.type === 'song') {
-    if (url.pathname.startsWith(`/api/album/${player.album_id}`)) {
+    const song = player as Song;
+    if (url.pathname.startsWith(`/api/album/${song.album_id}`)) {
       return true;
     }
-    if (url.pathname.startsWith(`/api/artist/${player.artist_id}`)) {
+    if (url.pathname.startsWith(`/api/artist/${song.artist_id}`)) {
       return true;
     }
   }
   if (play.type === 'episode') {
-    if (url.pathname.startsWith(`/api/podcast/${player.parent_id}`)) {
+    const episode = player as Episode;
+    if (url.pathname.startsWith(`/api/podcast/${episode.parent_id}`)) {
       return true;
     }
   }
   return false;
 };
+
+if (browser) {
+  playerStore.subscribe((player) => {
+    const type = get(playStore)?.type;
+    if (!type || !player) {
+      navigator.mediaSession.metadata = null;
+      return;
+    }
+    let title: string | undefined = undefined;
+    let artist: string | undefined = undefined;
+    let artwork: MediaImage[] = [
+      {
+        src: new URL(`/128x128.avif`, PUBLIC_API_URL).href,
+        type: 'image/avif',
+        sizes: '128x128'
+      }
+    ];
+    if (type === 'song') {
+      const song = player as Song;
+      title = song.name;
+      artist = `${song.album?.name} - ${song.artist?.name}`;
+    }
+    if (type === 'episode') {
+      const episode = player as Episode;
+      title = episode.title;
+      artist = episode.parent?.title;
+      artwork = [
+        {
+          src: new URL(`/artwork/${episode.parent_id}`, PUBLIC_API_URL).href
+        }
+      ];
+    }
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title,
+      artist,
+      artwork
+    });
+  });
+}

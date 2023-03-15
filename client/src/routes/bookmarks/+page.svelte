@@ -13,12 +13,16 @@
     offlineStore,
     playStore,
     settingStore,
-    removeBookmark
+    removeBookmark,
+    unplayedBookmark
   } from '$lib/stores';
   import {formatTime, progress} from '$lib/utils';
-  import {addOffline, deleteOffline} from '$lib/offline';
+  import {addOffline, removeOffline} from '$lib/offline';
+  import BookmarkX from '$components/icons/bookmark-x.svelte';
+  import Backspace from '$components/icons/backspace.svelte';
   import Download from '$components/icons/download.svelte';
   import Trash from '$components/icons/trash.svelte';
+  import Play from '$components/icons/play.svelte';
 
   export let data: PageData;
 
@@ -29,11 +33,13 @@
   };
 
   const parentAlbum = (bookmark: Bookmark): Album => {
-    return bookmark.parent!.album as Album;
+    const parent = bookmark.parent as Song;
+    return parent.album as Album;
   };
 
   const parentArtist = (bookmark: Bookmark): Artist => {
-    return bookmark.parent!.artist as Artist;
+    const parent = bookmark.parent as Song;
+    return parent.artist as Artist;
   };
 
   const parentEpisode = (bookmark: Bookmark): Episode => {
@@ -41,7 +47,7 @@
   };
 
   const parentPodcast = (bookmark: Bookmark): Podcast => {
-    return bookmark.parent!.parent as Podcast;
+    return parentEpisode(bookmark).parent as Podcast;
   };
 
   const onSong = (bookmark: Bookmark) => {
@@ -53,15 +59,23 @@
     }
   };
 
-  const onDelete = async (bookmark: Bookmark) => {
-    if (window.confirm('Delete bookmark?')) {
+  const onRemove = async (bookmark: Bookmark) => {
+    if (window.confirm('Remove bookmark?')) {
       removeBookmark({id: bookmark.id});
-      deleteOffline(bookmark.parent_id);
+      removeOffline(bookmark.parent_id);
     }
   };
 
-  const onDeleteOffline = async (bookmark: Bookmark) => {
-    deleteOffline(bookmark.parent_id);
+  const onUnplayed = async (bookmark: Bookmark) => {
+    if (window.confirm('Mark as unplayed and remove bookmark?')) {
+      removeBookmark({id: bookmark.id});
+      unplayedBookmark({id: bookmark.id, parent_id: bookmark.parent_id});
+      removeOffline(bookmark.parent_id);
+    }
+  };
+
+  const onRemoveOffline = async (bookmark: Bookmark) => {
+    removeOffline(bookmark.parent_id);
   };
 
   const onAddOffline = async (ev: MouseEvent, bookmark: Bookmark) => {
@@ -80,9 +94,7 @@
 <h2 class="text-warning mb-3 fs-3">{data.heading}</h2>
 <div class="list-group">
   {#if bookmarks.length === 0}
-    <div class="list-group-item text-body-secondary">
-      No bookmarks found
-    </div>
+    <div class="list-group-item text-body-secondary">No bookmarks found</div>
   {:else}
     {#each bookmarks as item (item.id)}
       <article
@@ -137,8 +149,8 @@
           <div class="d-flex mt-2 mb-1">
             {#if $offlineStore.cached.includes(item.parent_id)}
               <button
-                on:click={() => onDeleteOffline(item)}
-                class="btn me-2 btn-sm btn-outline-secondary"
+                on:click={() => onRemoveOffline(item)}
+                class="btn btn-sm btn-outline-secondary"
                 aria-label="remove offline download"
                 type="button"
               >
@@ -149,26 +161,42 @@
                 on:click={(ev) => onAddOffline(ev, item)}
                 disabled={$settingStore.offline ||
                   Object.keys($offlineStore.downloads).includes(item.parent_id)}
-                class="btn me-2 btn-sm btn-outline-secondary"
+                class="btn btn-sm btn-outline-secondary"
                 aria-label="download for offline play"
                 type="button"
               >
                 <Download />
               </button>
             {/if}
+            <div
+              class="ms-2 btn-group"
+              aria-label="bookmark actions"
+              role="group"
+            >
+              <button
+                on:click={() => onUnplayed(item)}
+                class="btn btn-sm btn-outline-danger"
+                aria-label="mark as unplayed"
+                type="button"
+              >
+                <Backspace />
+              </button>
+              <button
+                on:click={() => onRemove(item)}
+                class="btn btn-sm btn-outline-danger"
+                aria-label="remove bookmark"
+                type="button"
+              >
+                <BookmarkX />
+              </button>
+            </div>
             <button
               on:click={() => onSong(item)}
-              class="btn me-2 btn-sm btn-outline-success"
+              class="btn ms-2 btn-sm btn-outline-success"
+              aria-label="resume playback"
               type="button"
             >
-              Resume
-            </button>
-            <button
-              on:click={() => onDelete(item)}
-              class="btn btn-sm btn-outline-danger"
-              type="button"
-            >
-              Delete
+              <Play />
             </button>
           </div>
         </div>
@@ -200,4 +228,15 @@
       </article>
     {/each}
   {/if}
+</div>
+
+<div class="mt-4 d-flex justify-content-center gap-3">
+  <p class="fs-7">
+    <Backspace />
+    <span class="ms-1">Unplayed + Remove</span>
+  </p>
+  <p class="fs-7">
+    <BookmarkX />
+    <span class="ms-1">Remove Bookmark</span>
+  </p>
 </div>

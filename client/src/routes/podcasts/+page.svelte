@@ -1,6 +1,6 @@
 <script lang="ts">
   import type {PageData} from './$types';
-  import type {Podcast} from '$apiTypes';
+  import type {Episode, Podcast} from '$apiTypes';
   import {PUBLIC_API_URL} from '$env/static/public';
   import {playerStore} from '$lib/stores';
   import {formatDate} from '$lib/utils';
@@ -11,10 +11,10 @@
 
   const podcasts: Podcast[] = data.podcasts;
 
-  $: song = $playerStore;
+  $: episode = $playerStore as Episode;
 
   const className = (podcast: Podcast) => {
-    if (song && song.parent_id === podcast.id) {
+    if (episode && episode.parent_id === podcast.id) {
       return 'text-primary';
     }
     return 'text-body-emphasis';
@@ -25,8 +25,10 @@
   <a href="/podcasts" class="text-warning text-decoration-none"
     >{data.heading}</a
   >
-  <a href="/podcasts/settings" class="fs-6 text-body-emphasis text-decoration-none me-3"
-    >
+  <a
+    href="/podcasts/settings"
+    class="fs-6 text-body-emphasis text-decoration-none me-3"
+  >
     <span class="fw-light me-2 text-body-secondary">settings</span>
     <Settings />
   </a>
@@ -55,7 +57,7 @@
         <div class="flex-grow-1">
           <div class="d-flex justify-content-between align-items-start">
             <span class="lh-sm">
-              {#if song && song.parent_id === item.id}
+              {#if episode && episode.parent_id === item.id}
                 <Headphones />
               {/if}
               {item.title}

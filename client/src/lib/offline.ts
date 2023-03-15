@@ -1,5 +1,5 @@
 import {get} from 'svelte/store';
-import {offlineStore} from './stores';
+import {offlineStore} from '$lib/stores';
 import type {AddOffline} from '$lib/types';
 
 export const loadIndexedDB = async () => {
@@ -56,7 +56,7 @@ export const getOffline = async (id: IDBValidKey): Promise<Blob | null> => {
   });
 };
 
-export const deleteOffline = async (id: IDBValidKey): Promise<void> => {
+export const removeOffline = async (id: IDBValidKey): Promise<void> => {
   return new Promise(async (resolve) => {
     const {db} = get(offlineStore);
     if (!db) {

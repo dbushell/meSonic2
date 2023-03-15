@@ -4,7 +4,6 @@ import * as path from 'path';
 import * as sqlite3 from 'sqlite3';
 import * as env from '../library/env.ts';
 
-export * from './media.ts';
 export * from './artist.ts';
 export * from './album.ts';
 export * from './song.ts';
@@ -12,7 +11,6 @@ export * from './podcast.ts';
 export * from './episode.ts';
 export * from './bookmark.ts';
 export * from './metadata.ts';
-export * from './api.ts';
 
 const emoji = '💾';
 

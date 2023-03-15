@@ -24,6 +24,10 @@
   overflow: hidden;
 }
 
+* {
+  touch-action: manipulation;
+}
+
 .font-monospace {
   letter-spacing: -0.025rem;
 }
@@ -133,6 +137,7 @@
   font-size: 0.5rem !important;
   letter-spacing: -0.0625rem;
   margin-block-start: 0.0625rem;
+  line-height: 0.625rem;
 }
 
 .form-range {

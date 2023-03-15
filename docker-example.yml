@@ -1,0 +1,19 @@
+volumes:
+  data:
+    name: mesonic2
+
+services:
+  mesonic2:
+    container_name: mesonic2
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mesonic2
+    restart: unless-stopped
+    volumes:
+      - data:/mesonic/data
+      - /mnt/Audiobooks:/mesonic/media:ro
+    env_file:
+      - ./.env
+    ports:
+      - "3000:3000"

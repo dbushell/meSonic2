@@ -1,11 +1,13 @@
 import * as env from './env.ts';
 import {serveFile} from 'file_server';
 import * as db from '../database/mod.ts';
+import * as api from './api.ts';
 import {
   RemovePodcast,
   AddBookmark,
   Bookmark,
-  RemoveBookmark
+  RemoveBookmark,
+  UnplayedBookmark
 } from '../types.ts';
 
 export {sveltekit} from './sveltekit.ts';
@@ -79,6 +81,16 @@ export const bookmark = async (
       db.removeBookmark(body);
       return new Response(null, {headers: getHeaders(request)});
     }
+    if (id === 'unplayed') {
+      const body = (await request.json()) as UnplayedBookmark;
+      db.removeBookmark(body);
+      const meta = db.getMetadata({
+        parent_id: body.parent_id,
+        key: 'played'
+      });
+      meta.forEach(db.removeMetadata);
+      return new Response(null, {headers: getHeaders(request)});
+    }
     return new Response(null, {
       status: 400,
       statusText: 'Bad Request',
@@ -111,9 +123,9 @@ export const podcast = async (
   if (request.method === 'POST') {
     if (id === 'add') {
       const body = (await request.json()) as {feed: string};
-      const podcast = await db.addPodcastByFeed(body.feed);
+      const podcast = await api.addPodcastByFeed(body.feed);
       if (podcast) {
-        db.syncPodcast(podcast);
+        api.syncPodcast(podcast);
         return new Response(JSON.stringify(podcast), {
           headers: getHeaders(request)
         });
@@ -175,7 +187,7 @@ export const artwork = async (
     if (!id) throw new Error();
     const podcast = db.getPodcast({id});
     if (!podcast.length) throw new Error();
-    const response = await db.fetchArtwork(podcast[0]);
+    const response = await api.fetchArtwork(podcast[0]);
     if (response.headers.has('x-cache-location')) {
       return handleCache(response, request);
     }
@@ -196,7 +208,7 @@ export const audio = async (url: URL, request: Request): Promise<Response> => {
     if (type === 'episode') {
       const episode = db.getEpisode({id});
       if (!episode.length) throw new Error();
-      const response = await db.fetchAudio(episode[0]);
+      const response = await api.fetchAudio(episode[0]);
       if (response.headers.has('x-cache-location')) {
         return handleCache(response, request);
       }

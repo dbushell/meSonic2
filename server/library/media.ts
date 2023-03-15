@@ -1,7 +1,7 @@
 import * as log from 'log';
 import * as path from 'path';
 import {duration as audioDuration} from 'audio_duration';
-import * as db from './mod.ts';
+import * as db from '../database/mod.ts';
 import * as env from '../library/env.ts';
 import {
   Artist,
@@ -156,8 +156,6 @@ export const syncMedia = async () => {
       }
     }
   }
-  // TODO: fix race condition with events?
-  // Cleanup missing artists
   for (const artist of db.getArtist()) {
     try {
       const stat = await Deno.lstat(artist.path);
@@ -166,7 +164,6 @@ export const syncMedia = async () => {
       db.removeArtist(artist.id);
     }
   }
-  // Delete missing albums
   for (const album of db.getAlbum()) {
     try {
       const stat = await Deno.lstat(album.path);
@@ -175,7 +172,6 @@ export const syncMedia = async () => {
       db.removeAlbum(album.id);
     }
   }
-  // Delete missing songs
   for (const song of db.getSong()) {
     try {
       const stat = await Deno.lstat(song.path);
@@ -184,7 +180,4 @@ export const syncMedia = async () => {
       db.removeSong(song.id);
     }
   }
-  // TODO: is this necessary?
-  // // Delete orphaned albums and songs
-  // await db.deleteOrphans();
 };

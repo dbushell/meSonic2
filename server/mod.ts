@@ -1,6 +1,8 @@
 import * as env from './library/env.ts';
 import * as db from './database/mod.ts';
 import * as cache from './cache/mod.ts';
+import * as api from './library/api.ts';
+import * as media from './library/media.ts';
 import * as timer from './library/timer.ts';
 import * as server from './library/server.ts';
 import * as shutdown from './library/shutdown.ts';
@@ -15,7 +17,7 @@ timer.setTimer(
   'media sync',
   timer.HOUR,
   async () => {
-    await db.syncMedia();
+    await media.syncMedia();
   },
   true,
   true
@@ -27,7 +29,7 @@ timer.setTimer(
   async () => {
     const tasks: Promise<unknown>[] = [];
     db.getPodcast().forEach((podcast) => {
-      tasks.push(db.syncPodcast(podcast));
+      tasks.push(api.syncPodcast(podcast));
     });
     await Promise.all(tasks);
   },

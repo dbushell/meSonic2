@@ -1,4 +1,4 @@
-import type {Bookmark, Episode} from '$apiTypes';
+import type {Bookmark} from '$apiTypes';
 
 // Format seconds to `00:00:00` duration
 export const formatTime = (s: string | number) => {

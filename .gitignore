@@ -2,6 +2,8 @@
 !.env.example
 !.gitignore
 !README.md
+!Dockerfile
+!docker-example.yml
 !*.json
 !*.ts
 !*.sh

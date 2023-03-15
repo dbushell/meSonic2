@@ -15,8 +15,7 @@ export interface SongEntry {
   name: string;
 }
 
-export interface Artist {
-  [key: string]: string | number | Album[] | undefined;
+export type Artist = {
   id: string;
   created_at: string;
   modified_at: string;
@@ -38,8 +37,7 @@ export interface AddArtist {
   path: string;
 }
 
-export interface Album {
-  [key: string]: string | number | Song[] | Artist | undefined;
+export type Album = {
   id: string;
   created_at: string;
   modified_at: string;
@@ -66,8 +64,7 @@ export interface AddAlbum {
   path: string;
 }
 
-export interface Song {
-  [key: string]: string | number | Artist | Album | Bookmark[] | undefined;
+export type Song = {
   id: string;
   created_at: string;
   modified_at: string;
@@ -103,8 +100,7 @@ export interface AddSong {
   size: number;
 }
 
-export interface Podcast {
-  [key: string]: string | number | Episode[] | Metadata[] | undefined;
+export type Podcast = {
   id: string;
   created_at: string;
   modified_at: string;
@@ -141,14 +137,7 @@ export interface RemovePodcast {
   id: string;
 }
 
-export interface Episode {
-  [key: string]:
-    | string
-    | number
-    | Podcast
-    | Bookmark[]
-    | Metadata[]
-    | undefined;
+export type Episode = {
   id: string;
   created_at: string;
   modified_at: string;
@@ -193,8 +182,7 @@ export interface UpdateEpisode {
   length?: number;
 }
 
-export interface Bookmark {
-  [key: string]: string | number | Song | Episode | undefined;
+export type Bookmark = {
   id: string;
   created_at: string;
   modified_at: string;
@@ -226,13 +214,17 @@ export interface RemoveBookmark {
   parent_type?: string;
 }
 
+export interface UnplayedBookmark {
+  id: string;
+  parent_id: string;
+}
+
 export interface UpdateBookmark {
   id: string;
   position?: number;
 }
 
-export interface Metadata {
-  [key: string]: string;
+export type Metadata = {
   id: string;
   created_at: string;
   modified_at: string;

@@ -4,6 +4,7 @@
 
   const dispatch = createEventDispatcher();
 
+  export let skip: number;
   export let isDisabled: boolean;
 </script>
 
@@ -19,6 +20,6 @@
     aria-hidden="true"
     class="fs-7 font-monospace position-absolute top-50 start-50 translate-middle"
   >
-    15
+    {skip}
   </span>
 </button>

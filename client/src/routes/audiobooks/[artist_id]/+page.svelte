@@ -1,6 +1,6 @@
 <script lang="ts">
   import type {PageData} from './$types';
-  import type {Artist, Album} from '$apiTypes';
+  import type {Artist, Album, Song} from '$apiTypes';
   import {playerStore} from '$lib/stores';
   import Headphones from '$components/icons/headphones.svelte';
 
@@ -9,7 +9,7 @@
   const artists: Artist[] = data.artists;
   const albums: Album[] = artists[0].albums ?? [];
 
-  $: player = $playerStore;
+  $: player = $playerStore as Song;
 
   const className = (album: Album) => {
     if (player && player.album_id === album.id) {
