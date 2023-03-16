@@ -19,7 +19,7 @@ const worker = new Worker(new URL('./worker.ts', import.meta.url), {
   type: 'module'
 });
 
-worker.addEventListener('message', (ev: MessageEvent) => {
+worker.addEventListener('message', async (ev: MessageEvent) => {
   if (ev.data.type === 'ready') {
     workerMap.get('ready')!.resolve(true);
   }
@@ -55,15 +55,42 @@ worker.addEventListener('message', (ev: MessageEvent) => {
     }
     const promise = fetchMap.get(data.id)!;
     fetchMap.delete(data.id);
-    if (Object.hasOwn(data, 'body')) {
+    if (!Object.hasOwn(data, 'body')) {
+      promise.reject(data.error);
+    }
+    if (data.body === null) {
       promise.resolve(
-        new Response(data.body, {
+        new Response(null, {
           headers: new Headers(data.headers)
         })
       );
       return;
     }
-    promise.reject(data.error);
+    try {
+      const file = await Deno.open(data.body, {read: true});
+      const {rid} = file;
+      let stream = file.readable;
+      if (data.headers['content-encoding'] === 'gzip') {
+        stream = stream.pipeThrough(new DecompressionStream('gzip'));
+      }
+      data.headers['x-cache-rid'] = String(rid);
+      promise.resolve(
+        new Response(stream, {
+          headers: new Headers(data.headers)
+        })
+      );
+      // TODO: is this necessary?
+      setTimeout(() => {
+        try {
+          Deno.close(rid);
+          log.debug(`Unused stream: ${JSON.stringify(data)}`);
+        } catch {
+          // Do nothing...
+        }
+      }, 1000 * 30);
+    } catch (err) {
+      promise.reject(err);
+    }
   }
 });
 

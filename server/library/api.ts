@@ -14,7 +14,7 @@ export const addPodcastByFeed = async (
     );
     apiUrl.searchParams.set('url', url);
     const response = await cache.fetchCache(new URL(apiUrl));
-    const text = new TextDecoder().decode(await response.arrayBuffer());
+    const text = await response.text();
     const json = JSON.parse(text);
     if (json.status !== 'true') {
       throw new Error(json.description ?? 'no description');
@@ -51,7 +51,7 @@ export const getPodcastMeta = async (podcast: Podcast): Promise<any> => {
     const response = await cache.fetchCache(new URL(apiUrl), {
       maxAge: timer.DAY
     });
-    const text = new TextDecoder().decode(await response.arrayBuffer());
+    const text = await response.text();
     const json = JSON.parse(text);
     if (json.status !== 'true') {
       throw new Error(json.description ?? 'no description');
@@ -76,13 +76,15 @@ export const getEpisodesMeta = async (podcast: Podcast): Promise<any> => {
     const response = await cache.fetchCache(new URL(apiUrl), {
       maxAge: timer.HOUR
     });
-    const text = new TextDecoder().decode(await response.arrayBuffer());
+    const text = await response.text();
     const json = JSON.parse(text);
-    if (json.status !== 'true') {
-      throw new Error(json.description ?? 'no description');
+    if (json.status !== 'true' || !Array.isArray(json.items)) {
+      // TODO: re-add feed if guid does not match?
+      throw new Error(JSON.stringify(json));
     }
     return json;
   } catch (err) {
+    log.error(podcast);
     log.error(err);
     return;
   }
@@ -93,11 +95,12 @@ export const syncPodcast = async (podcast: Podcast): Promise<unknown> => {
     const tasks: Promise<unknown>[] = [];
     const meta = await getEpisodesMeta(podcast);
     if (!meta) {
-      throw new Error('no podcast meta');
+      throw new Error('no episode meta');
     }
     tasks.push(fetchArtwork(podcast));
     const episodeIds = new Set<string>();
     const oldEpisodes = db.getEpisode({parent_id: podcast.id});
+
     // deno-lint-ignore no-explicit-any
     meta.items.forEach((item: any) => {
       const props = {
@@ -144,43 +147,36 @@ export const syncPodcast = async (podcast: Podcast): Promise<unknown> => {
       id: podcast.id,
       modified_at: newEpisodes[0].modified_at
     });
-    tasks.push(prefetchAudio(newEpisodes[0]));
+    tasks.push(fetchAudio(newEpisodes[0]));
     return Promise.all(tasks);
   } catch (err) {
-    log.error(err);
+    log.error(`sync podcast: ${err}`);
   }
 };
 
-export const prefetchAudio = async (episode: Episode): Promise<void> => {
+export const fetchAudio = async (
+  episode: Episode,
+  prefetch = true
+): Promise<Response> => {
   try {
-    await cache.fetchCache(new URL(episode.url), {
+    const response = await cache.fetchCache(new URL(episode.url), {
       maxAge: timer.DAY * 30,
       name: `audio:${episode.id}`,
       accept: [episode.type],
       compress: false,
-      prefetch: true
+      prefetch
     });
-  } catch (err) {
-    log.error(err);
-  }
-};
-
-export const fetchAudio = async (episode: Episode): Promise<Response> => {
-  try {
-    const audio = await cache.fetchCache(new URL(episode.url), {
-      maxAge: timer.DAY * 30,
-      name: `audio:${episode.id}`,
-      accept: [episode.type],
-      compress: false
-    });
-    return audio;
+    return response;
   } catch (err) {
     log.error(err);
     return new Response(null, {status: 404, statusText: 'Not Found'});
   }
 };
 
-export const fetchArtwork = async (podcast: Podcast): Promise<Response> => {
+export const fetchArtwork = async (
+  podcast: Podcast,
+  prefetch = true
+): Promise<Response> => {
   try {
     const meta = await getPodcastMeta(podcast);
     if (!meta) {
@@ -189,9 +185,10 @@ export const fetchArtwork = async (podcast: Podcast): Promise<Response> => {
     if (!meta.feed.artwork) {
       throw new Error('no artwork');
     }
-    const artwork = await cache.fetchCache(new URL(meta.feed.artwork), {
-      maxAge: timer.WEEK,
+    const response = await cache.fetchCache(new URL(meta.feed.artwork), {
+      maxAge: timer.DAY,
       name: `artwork:${podcast.id}`,
+      prefetch,
       accept: [
         'image/avif',
         'image/webp;q=0.9',
@@ -200,9 +197,9 @@ export const fetchArtwork = async (podcast: Podcast): Promise<Response> => {
         'image/jpg;q=0.7'
       ]
     });
-    return artwork;
+    return response;
   } catch (err) {
-    log.error(err);
+    log.error(`fetch artwork: ${err}`);
     return new Response(null, {status: 404, statusText: 'Not Found'});
   }
 };

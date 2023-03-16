@@ -137,7 +137,7 @@ export const removeSong = (id: string): boolean => {
 
 addEventListener('song:add', ((event: CustomEvent<Song>) => {
   const song = event.detail;
-  log.warning(`${emoji} Add song (${song.name})`);
+  log.info(`${emoji} Add song (${song.name})`);
 }) as EventListener);
 
 addEventListener('song:remove', ((event: CustomEvent<Song>) => {

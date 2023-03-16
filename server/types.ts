@@ -279,7 +279,7 @@ export interface CacheResponse {
   type: 'fetch';
   id: string;
   headers: {[key: string]: string};
-  body: ArrayBuffer | null;
+  body: string | null;
   error?: unknown;
 }
 

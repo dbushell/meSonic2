@@ -244,6 +244,31 @@ if (browser) {
           src: new URL(`/artwork/${episode.parent_id}`, PUBLIC_API_URL).href
         }
       ];
+      const image = new Image();
+      image.src = artwork[0].src;
+      image.addEventListener('load', async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const context = canvas.getContext('2d')!;
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          URL.revokeObjectURL(localStorage.getItem('artworkBlobURL') ?? '');
+          localStorage.setItem('artworkBlobURL', URL.createObjectURL(blob));
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title,
+            artist,
+            artwork: [
+              {
+                src: localStorage.getItem('artworkBlobURL')!,
+                sizes: `${canvas.width}x${canvas.height}`,
+                type: blob.type
+              }
+            ]
+          });
+        });
+      });
     }
     navigator.mediaSession.metadata = new MediaMetadata({
       title,

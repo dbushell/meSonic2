@@ -162,13 +162,17 @@ const handleFetch = async (id: string, options: CacheOptions) => {
         fetchNext();
       })
   };
-  // Skip queue if JSON
-  if (item.options.accept[0] === 'application/json') {
-    fetchActive.set(item.id, item);
-    item.callback();
-  } else {
-    fetchQueue.push(item);
-  }
+  // Pritorize JSON over images over everything else
+  fetchQueue.push(item);
+  const sortValue = (item: CacheItem) => {
+    if (item.options.accept[0].startsWith('application/json')) return 1;
+    if (item.options.accept[0].startsWith('image/')) return 2;
+    if (item.options.accept[0].startsWith('audio/')) return 4;
+    return 3;
+  };
+  fetchQueue.sort((a, b) => {
+    return sortValue(a) - sortValue(b);
+  });
   fetchNext();
 };
 
@@ -186,12 +190,11 @@ const fetchAndCache = async (id: string) => {
     // Validate URL before fetch
     new URL(new TextDecoder().decode(base58.decode(id)));
     // Return from cache if available
-    if (await fetchFromCache(item)) {
+    if (fetchFromCache(item)) {
       return;
     }
     await fetchFromFresh(item);
   } catch (error) {
-    // TODO: Handle missing file better
     delete cacheMeta[id];
     await Deno.remove(item.path).catch(() => {});
     log.warning(`Fail (${id})`);
@@ -200,7 +203,7 @@ const fetchAndCache = async (id: string) => {
   }
 };
 
-export const fetchFromCache = async (item: CacheItem): Promise<boolean> => {
+export const fetchFromCache = (item: CacheItem): boolean => {
   const {id, name, options} = item;
   if (!Object.hasOwn(cacheMeta, id)) {
     return false;
@@ -219,44 +222,25 @@ export const fetchFromCache = async (item: CacheItem): Promise<boolean> => {
   const message: CacheResponse = {
     type: 'fetch',
     id,
+    body: options.prefetch ? null : item.path,
     headers: {
       'content-type': cached.contentType,
       'x-cache': 'HIT',
       'x-cache-location': item.path
-    },
-    body: null
+    }
   };
   if (cached.compressed) {
     message.headers['content-encoding'] = 'gzip';
   }
-  if (options.prefetch) {
-    self.postMessage(message);
-    return true;
-  }
   log.debug(`Hit (${id})`);
-  if (cached.compressed) {
-    const file = await Deno.open(item.path);
-    const stream = file.readable.pipeThrough(new DecompressionStream('gzip'));
-    let data = new Uint8Array(0);
-    for await (const chunk of stream) {
-      const newData = new Uint8Array(data.length + chunk.length);
-      newData.set(data);
-      newData.set(chunk, data.length);
-      data = newData;
-    }
-    message.body = data.buffer;
-  } else {
-    const data = await Deno.readFile(item.path);
-    message.body = data.buffer;
-  }
-  self.postMessage(message, [message.body]);
+  self.postMessage(message);
   return true;
 };
 
 export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
   const {id, options} = item;
   const url = new URL(new TextDecoder().decode(base58.decode(id)));
-  log.debug(`Miss (${JSON.stringify({url: url.href, ...options})})`);
+  log.debug(`Miss (${JSON.stringify({id, ...options})})`);
   // Add authorization headers for known hosts
   const headers = new Headers();
   await addHeaders(headers, url);
@@ -294,39 +278,41 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
   const message: CacheResponse = {
     type: 'fetch',
     id,
+    body: options.prefetch ? null : item.path,
     headers: {
       'content-type': contentType,
       'x-cache': 'MISS',
       'x-cache-location': item.path
-    },
-    body: null
-  };
-  message.body = await response.arrayBuffer();
-  let cacheData = new Uint8Array(message.body);
-  if (options.compress) {
-    message.headers['content-encoding'] = 'gzip';
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(cacheData);
-        controller.close();
-      }
-    }).pipeThrough(new CompressionStream('gzip'));
-    let data = new Uint8Array(0);
-    for await (const chunk of stream) {
-      const newData = new Uint8Array(data.length + chunk.length);
-      newData.set(data);
-      newData.set(chunk, data.length);
-      data = newData;
     }
-    cacheData = data;
+  };
+  try {
+    // TODO: shouldn't be necessary
+    // but getting "WriteZero: failed to write whole buffer"
+    // try {
+    //   Deno.remove(item.path);
+    // } catch {
+    //   // Do nothing...
+    // }
+    // await fs.ensureFile(item.path);
+    const file = await Deno.open(item.path, {
+      write: true,
+      create: true,
+      truncate: true
+    });
+    let stream = response.body;
+    if (options.compress) {
+      stream = response.body.pipeThrough(new CompressionStream('gzip'));
+      message.headers['content-encoding'] = 'gzip';
+    }
+    await stream.pipeTo(file.writable);
+    // await Deno.writeFile(item.path, stream);
+  } catch (err) {
+    log.error(`Fresh (${id})`);
+    await Deno.remove(item.path);
+    delete cacheMeta[id];
+    throw new Error(err);
   }
-  await fs.ensureFile(item.path);
-  await Deno.writeFile(item.path, cacheData);
-  if (options.prefetch) {
-    self.postMessage(message);
-  } else {
-    self.postMessage(message, [message.body]);
-  }
+  self.postMessage(message);
 };
 
 const addHeaders = async (headers: Headers, url: URL) => {

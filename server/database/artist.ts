@@ -87,7 +87,7 @@ export const removeArtist = (id: string): boolean => {
 
 addEventListener('artist:add', ((event: CustomEvent<Artist>) => {
   const artist = event.detail;
-  log.warning(`${emoji} Add artist (${artist.name})`);
+  log.info(`${emoji} Add artist (${artist.name})`);
 }) as EventListener);
 
 addEventListener('artist:remove', ((event: CustomEvent<Artist>) => {

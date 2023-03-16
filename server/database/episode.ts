@@ -190,7 +190,7 @@ export const updateEpisode = (params: UpdateEpisode): boolean => {
 
 addEventListener('episode:add', ((event: CustomEvent<Episode>) => {
   const episode = event.detail;
-  log.warning(`${emoji} Add episode (${episode.url})`);
+  log.info(`${emoji} Add episode (${episode.url})`);
 }) as EventListener);
 
 addEventListener('episode:remove', ((event: CustomEvent<Episode>) => {

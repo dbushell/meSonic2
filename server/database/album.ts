@@ -105,7 +105,7 @@ export const removeAlbum = (id: string): boolean => {
 
 addEventListener('album:add', ((event: CustomEvent<Album>) => {
   const album = event.detail;
-  log.warning(`${emoji} Add album (${album.name})`);
+  log.info(`${emoji} Add album (${album.name})`);
 }) as EventListener);
 
 addEventListener('album:remove', ((event: CustomEvent<Album>) => {

@@ -191,10 +191,7 @@ export const artwork = async (
     if (response.headers.has('x-cache-location')) {
       return handleCache(response, request);
     }
-    getHeaders(request).forEach((value, key) => {
-      response.headers.set(key, value);
-    });
-    return response;
+    throw new Error();
   } catch {
     return error404(request);
   }
@@ -212,10 +209,6 @@ export const audio = async (url: URL, request: Request): Promise<Response> => {
       if (response.headers.has('x-cache-location')) {
         return handleCache(response, request);
       }
-      getHeaders(request).forEach((value, key) => {
-        response.headers.set(key, value);
-      });
-      return response;
     }
     if (type === 'song') {
       const song = db.getSong({id});

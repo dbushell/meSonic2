@@ -143,7 +143,7 @@ export const updatePodcast = (params: UpdatePodcast): boolean => {
 
 addEventListener('podcast:add', ((event: CustomEvent<Podcast>) => {
   const podcast = event.detail;
-  log.warning(`${emoji} Add podcast (${podcast.url})`);
+  log.info(`${emoji} Add podcast (${podcast.url})`);
 }) as EventListener);
 
 addEventListener('podcast:remove', ((event: CustomEvent<Podcast>) => {
