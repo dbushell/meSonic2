@@ -225,9 +225,9 @@ if (browser) {
     let artist: string | undefined = undefined;
     let artwork: MediaImage[] = [
       {
-        src: new URL(`/128x128.avif`, PUBLIC_API_URL).href,
+        src: new URL(`/512x512.avif`, PUBLIC_API_URL).href,
         type: 'image/avif',
-        sizes: '128x128'
+        sizes: '512x512'
       }
     ];
     if (type === 'song') {
@@ -248,8 +248,8 @@ if (browser) {
       image.src = artwork[0].src;
       image.addEventListener('load', async () => {
         const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
+        canvas.width = 512;
+        canvas.height = 512;
         const context = canvas.getContext('2d')!;
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
         canvas.toBlob((blob) => {

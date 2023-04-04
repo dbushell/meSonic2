@@ -15,7 +15,7 @@ import {
 const emoji = '📚';
 
 // File extensions to consider as audio when syncing media
-const EXTENSIONS = ['mp3', 'm4b'];
+const EXTENSIONS = ['mp3', 'mp4', 'm4a', 'm4b'];
 
 // Directory names must begin with `[A-Za-z0-9_]` character class
 const DIR = /^\w/;

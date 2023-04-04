@@ -13,6 +13,8 @@ shutdown.setup();
 // Something is missing...
 if (!env.check()) await shutdown.now();
 
+db.cleanupBookmarks();
+
 timer.setTimer(
   'media sync',
   timer.HOUR,

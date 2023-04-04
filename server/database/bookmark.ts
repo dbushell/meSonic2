@@ -8,7 +8,8 @@ import {
   AddBookmark,
   RemoveBookmark,
   UpdateBookmark,
-  Episode
+  Episode,
+  Song
 } from '../types.ts';
 
 const emoji = '🔖';
@@ -155,6 +156,33 @@ export const updateBookmark = (params: UpdateBookmark): boolean => {
     log.error(err);
     return false;
   }
+};
+
+export const cleanupBookmarks = () => {
+  const bookmarks = getBookmark({
+    songs: true,
+    albums: true,
+    artists: true,
+    episodes: true,
+    podcasts: true
+  });
+  bookmarks.forEach((bookmark) => {
+    if (!bookmark.parent) {
+      removeBookmark({id: bookmark.id});
+    }
+    if (bookmark.parent_type === 'song') {
+      const parent = bookmark.parent as Song;
+      if (!parent?.album || !parent?.artist) {
+        removeBookmark({id: bookmark.id});
+      }
+    }
+    if (bookmark.parent_type === 'episode') {
+      const parent = bookmark.parent as Episode;
+      if (!parent?.parent) {
+        removeBookmark({id: bookmark.id});
+      }
+    }
+  });
 };
 
 addEventListener('episode:remove', ((event: CustomEvent<Episode>) => {
