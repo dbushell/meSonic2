@@ -30,7 +30,7 @@ try {
   if (!ver || ver[0] === 0) {
     log.info(`${emoji} Exec schema 001`);
     const sql = await Deno.readTextFile(
-      path.join(Deno.cwd(), 'server/schema/001.sql')
+      path.join(env.get('SRC_DIR'), 'server/schema/001.sql')
     );
     db.exec(sql);
     ver = [1];
@@ -38,7 +38,7 @@ try {
   if (ver && ver[0] === 1) {
     log.info(`${emoji} Exec schema 002`);
     const sql = await Deno.readTextFile(
-      path.join(Deno.cwd(), 'server/schema/002.sql')
+      path.join(env.get('SRC_DIR'), 'server/schema/002.sql')
     );
     db.exec(sql);
     ver = [2];

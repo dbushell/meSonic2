@@ -89,6 +89,12 @@
     url.searchParams.set('type', bookmark.parent_type);
     addOffline({id: bookmark.parent_id, url});
   };
+
+  const formatBytes = (bytes: number) => {
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+  };
 </script>
 
 <h2 class="text-warning mb-3 fs-3">{data.heading}</h2>
@@ -240,3 +246,9 @@
     <span class="ms-1">Remove Bookmark</span>
   </p>
 </div>
+
+{#if $offlineStore.quota}
+  <div class="mt-4 d-flex justify-content-center gap-3">
+    <p class="fs-7">{formatBytes($offlineStore.usage)} / {formatBytes($offlineStore.quota)}</p>
+  </div>
+{/if}

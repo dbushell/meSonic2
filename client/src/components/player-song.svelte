@@ -2,9 +2,11 @@
   import type {Song} from '$apiTypes';
   import {playerStore} from '$lib/stores';
   import Wifioff from '$components/icons/wifioff.svelte';
+  import Floppy from '$components/icons/floppy.svelte';
 
   export let isLoaded: boolean;
   export let isOffline: boolean;
+  export let isDownload: boolean;
 
   $: song = $playerStore as Song;
 </script>
@@ -15,7 +17,7 @@
       <span class="visually-hidden">Loading…</span>
     </span>
   {/if}
-  {#if isOffline}<Wifioff />{/if}
+  {#if isOffline}<Wifioff />{:else if isDownload}<Floppy />{/if}
   <span>{song.name}</span>
 </p>
 <div class="d-flex flex-wrap">

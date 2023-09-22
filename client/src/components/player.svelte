@@ -35,6 +35,7 @@
   let seekTimeout: number;
   let onLoadedPosition = 0;
   let playbackRate = 1.0;
+  let isDownload = false;
   let isOffline = false;
   let isPlaying = false;
   let isSeeking = false;
@@ -100,13 +101,13 @@
       if (/^blob:/.test(audioSrc)) {
         URL.revokeObjectURL(audioSrc);
       }
-      const cached = $offlineStore.cached.includes(newPlayer.id);
-      if (isOffline && !cached) {
+      isDownload = $offlineStore.cached.includes(newPlayer.id);
+      if (isOffline && !isDownload) {
         alert('Cannot play in offline mode');
         playStore.set(undefined);
         return;
       }
-      if (cached) {
+      if (isDownload) {
         const blob = await getOffline(newPlayer.id);
         if (blob) {
           audioSrc = URL.createObjectURL(blob);
@@ -242,9 +243,9 @@
       {#if play.id === player?.id}
         <h2 class="visually-hidden">Audio Player</h2>
         {#if play.type === 'song'}
-          <PlayerSong {isLoaded} {isOffline} />
+          <PlayerSong {isLoaded} {isOffline} {isDownload} />
         {:else if play.type === 'episode'}
-          <PlayerEpisode {isLoaded} {isOffline} />
+          <PlayerEpisode {isLoaded} {isOffline} {isDownload} />
         {/if}
       {:else}
         <p class="h6 lh-base m-0 me-auto">

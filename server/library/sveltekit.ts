@@ -3,26 +3,10 @@ import * as env from './env.ts';
 import {serveDir} from 'file_server';
 import {getHeaders} from './handle.ts';
 
-// TODO: check build files exist
-const kit = [
-  path.join(env.get('BUILD_DIR'), 'server/index.js'),
-  path.join(env.get('BUILD_DIR'), 'server/manifest.js')
-];
+const server = (await import(path.join(env.get('BUILD_DIR'), 'server.js')))
+  .default;
 
-const {Server} = await import(kit[0]);
-const {manifest} = await import(kit[1]);
-
-const server = new Server(manifest) as {
-  init(options: {env: Record<string, string>}): Promise<void>;
-  respond(
-    request: Request,
-    options: {
-      getClientAddress(): string;
-    }
-  ): Promise<Response>;
-};
-
-await server.init({
+const initialized = server.init({
   env: {
     API_SECRET: env.get('API_SECRET'),
     PUBLIC_API_URL: env.get('APP_ORIGIN'),
@@ -31,43 +15,46 @@ await server.init({
 });
 
 export const sveltekit = async (
-  url: URL,
-  request: Request
+  request: Request,
+  info: Deno.ServeHandlerInfo
 ): Promise<Response> => {
-  let response: Response = await serveDir(request, {
-    fsRoot: path.join(env.get('BUILD_DIR'), 'client'),
+  // Get client IP address
+  const clientAddress =
+    request.headers.get('x-forwarded-for') ??
+    (info.remoteAddr as Deno.NetAddr).hostname;
+
+  const {pathname} = new URL(request.url);
+
+  // Try static files (ignore redirects and errors)
+  let response = await serveDir(request, {
+    fsRoot: path.join(env.get('BUILD_DIR'), 'static'),
     quiet: true
   });
-  if (response && (response.ok || response.status < 400)) {
-    getHeaders(request).forEach((value, key) => {
-      response.headers.set(key, value);
-    });
-    const ext = path.extname(url.pathname);
-    if (['.js', '.css', '.svg', '.png', '.woff2'].includes(ext)) {
-      response.headers.set(
-        'cache-control',
-        'public, max-age=86400, must-revalidate'
-      );
-    }
-    if (url.pathname.startsWith(`/${manifest.appDir}/immutable/`)) {
-      response.headers.set(
-        'cache-control',
-        'public, max-age=31536000, immutable'
-      );
+  if (response.ok || response.status === 304) {
+    getHeaders(request).forEach((v, k) => response.headers.set(k, v));
+    if (response.status === 200) {
+      const ext = path.extname(pathname);
+      if (['.js', '.css', '.svg', '.png', '.woff2'].includes(ext)) {
+        response.headers.set(
+          'cache-control',
+          'public, max-age=86400, must-revalidate'
+        );
+      }
+      if (pathname.startsWith(`/_app/immutable/`)) {
+        response.headers.set(
+          'cache-control',
+          'public, max-age=31536000, immutable'
+        );
+      }
     }
     return response;
   }
+
+  // Pass to the SvelteKit server
+  await initialized;
   response = await server.respond(request, {
-    // https://github.com/oakserver/oak/blob/main/request.ts#L39
-    getClientAddress() {
-      return request.headers.get('x-forwarded-for') ?? '';
-    }
+    getClientAddress: () => clientAddress
   });
-  if (response) {
-    getHeaders(request).forEach((value, key) => {
-      response.headers.set(key, value);
-    });
-    return response;
-  }
-  throw new Error('We should not be here...');
+  getHeaders(request).forEach((v, k) => response.headers.set(k, v));
+  return response;
 };

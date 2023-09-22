@@ -11,17 +11,18 @@ import type {
   RemoveBookmark,
   UnplayedBookmark
 } from '$apiTypes';
-import {loadIndexedDB} from '$lib/offline';
+import {initStore} from '$lib/offline';
 import {PUBLIC_API_URL} from '$env/static/public';
 
 export const offlineStore: Writable<OfflineStore> = writable({
-  db: null,
   cached: [],
-  downloads: {}
+  downloads: {},
+  quota: 0,
+  usage: 0
 });
 
 if (browser) {
-  loadIndexedDB();
+  initStore();
 }
 
 export const playStore: Writable<PlayStore | undefined> = writable<
@@ -214,6 +215,55 @@ const invalidateBookmark = (url: URL): boolean => {
   return false;
 };
 
+const createImage = async (
+  size: number,
+  image: HTMLImageElement
+): Promise<[string, string] | null> => {
+  const uid = `artwork-${size}-${size}`;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext('2d')!;
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      URL.revokeObjectURL(localStorage.getItem(uid) ?? '');
+      if (!blob) {
+        return resolve(null);
+      }
+      const url = URL.createObjectURL(blob);
+      localStorage.setItem(uid, url);
+      resolve([url, blob.type]);
+    });
+  });
+};
+
+const updateMetadata = async (
+  title: string,
+  artist: string,
+  image: HTMLImageElement
+) => {
+  const images = {
+    '96': await createImage(96, image),
+    '256': await createImage(256, image),
+    '512': await createImage(512, image)
+  };
+  const artwork: MediaImage[] = [];
+  for (const [size, image] of Object.entries(images)) {
+    if (!image) continue;
+    artwork.push({
+      src: image[0],
+      type: image[1],
+      sizes: `${size}x${size}`
+    });
+  }
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title,
+    artist,
+    artwork
+  });
+};
+
 if (browser) {
   playerStore.subscribe((player) => {
     const type = get(playStore)?.type;
@@ -223,57 +273,26 @@ if (browser) {
     }
     let title: string | undefined = undefined;
     let artist: string | undefined = undefined;
-    let artwork: MediaImage[] = [
-      {
-        src: new URL(`/512x512.avif`, PUBLIC_API_URL).href,
-        type: 'image/avif',
-        sizes: '512x512'
-      }
-    ];
+    let artwork: MediaImage[] = [];
+    const image = new Image();
     if (type === 'song') {
       const song = player as Song;
       title = song.name;
       artist = `${song.album?.name} - ${song.artist?.name}`;
+      image.src = new URL(`/512x512.avif`, PUBLIC_API_URL).href;
     }
     if (type === 'episode') {
       const episode = player as Episode;
       title = episode.title;
       artist = episode.parent?.title;
-      artwork = [
-        {
-          src: new URL(`/artwork/${episode.parent_id}`, PUBLIC_API_URL).href
-        }
-      ];
-      const image = new Image();
-      image.src = artwork[0].src;
-      image.addEventListener('load', async () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 512;
-        const context = canvas.getContext('2d')!;
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        canvas.toBlob((blob) => {
-          if (!blob) return;
-          URL.revokeObjectURL(localStorage.getItem('artworkBlobURL') ?? '');
-          localStorage.setItem('artworkBlobURL', URL.createObjectURL(blob));
-          navigator.mediaSession.metadata = new MediaMetadata({
-            title,
-            artist,
-            artwork: [
-              {
-                src: localStorage.getItem('artworkBlobURL')!,
-                sizes: `${canvas.width}x${canvas.height}`,
-                type: blob.type
-              }
-            ]
-          });
-        });
-      });
+      image.src = new URL(`/artwork/${episode.parent_id}`, PUBLIC_API_URL).href;
     }
+    image.addEventListener('load', async () => {
+      updateMetadata(title!, artist!, image);
+    });
     navigator.mediaSession.metadata = new MediaMetadata({
       title,
-      artist,
-      artwork
+      artist
     });
   });
 }

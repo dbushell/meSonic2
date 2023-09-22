@@ -7,9 +7,9 @@ WORKDIR /mesonic/client
 
 RUN npm install && NODE_ENV=production npm run build
 
-FROM denoland/deno:latest
+FROM denoland/deno:1.37.0
 
-COPY --from=builder /mesonic/build /mesonic/build
+COPY --from=builder /mesonic/client/build /mesonic/build
 COPY server /mesonic/server
 COPY deno.json /mesonic/deno.json
 

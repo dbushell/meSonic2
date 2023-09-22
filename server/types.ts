@@ -23,7 +23,7 @@ export type Artist = {
   path: string;
   album_count: number;
   albums?: Album[];
-}
+};
 
 export interface GetArtist {
   id?: string;
@@ -47,7 +47,7 @@ export type Album = {
   song_count: number;
   songs?: Song[];
   artist?: Artist;
-}
+};
 
 export interface GetAlbum {
   id?: string;
@@ -78,7 +78,7 @@ export type Song = {
   artist?: Artist;
   album?: Album;
   bookmarks?: Bookmark[];
-}
+};
 
 export interface GetSong {
   id?: string;
@@ -109,7 +109,7 @@ export type Podcast = {
   episode_count: number;
   episodes?: Episode[];
   metadata?: Metadata[];
-}
+};
 
 export interface GetPodcast {
   id?: string;
@@ -150,7 +150,7 @@ export type Episode = {
   parent?: Podcast;
   bookmarks?: Bookmark[];
   metadata?: Metadata[];
-}
+};
 
 export interface GetEpisode {
   id?: string;
@@ -190,7 +190,7 @@ export type Bookmark = {
   parent_type: string;
   position: number;
   parent?: Song | Episode;
-}
+};
 
 export interface GetBookmark {
   id?: string;
@@ -232,7 +232,7 @@ export type Metadata = {
   parent_type: string;
   key: string;
   value: string;
-}
+};
 
 export interface GetMetadata {
   id?: string;
@@ -258,6 +258,20 @@ export interface UpdateMetadata {
   value: string;
 }
 
+export interface CacheMessage {
+  type: 'check' | 'cleanup' | 'close' | 'delete' | 'fetch' | 'log' | 'ready';
+  url?: string;
+  name?: string;
+  options?: Partial<CacheOptions>;
+  meta?: CacheMetaEntry | null;
+}
+
+export interface CacheLog extends CacheMessage {
+  type: 'log';
+  level: 'debug' | 'info' | 'warning' | 'error';
+  msg: string;
+}
+
 export interface CacheOptions {
   name: string;
   maxAge: number;
@@ -267,7 +281,7 @@ export interface CacheOptions {
 }
 
 export interface CacheItem {
-  id: string;
+  url: string;
   name: string;
   path: string;
   options: CacheOptions;
@@ -275,9 +289,9 @@ export interface CacheItem {
   callback: () => Promise<unknown>;
 }
 
-export interface CacheResponse {
+export interface CacheResponse extends CacheMessage {
   type: 'fetch';
-  id: string;
+  url: string;
   headers: {[key: string]: string};
   body: string | null;
   error?: unknown;

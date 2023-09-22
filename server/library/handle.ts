@@ -21,7 +21,7 @@ export const artistPattern = new URLPattern({pathname: '/api/artist/:id'});
 export const albumPattern = new URLPattern({pathname: '/api/album/:id'});
 export const songPattern = new URLPattern({pathname: '/api/song/:id'});
 
-export const getHeaders = (request: Request): Headers => {
+export const getHeaders = (request?: Request): Headers => {
   // TODO: const ip = request.headers.get('x-forwarded-for') ?? '';
   // TODO: 'origin, accept, accept-encoding, content-type, content-length, range'
   const headers = new Headers();
@@ -29,7 +29,7 @@ export const getHeaders = (request: Request): Headers => {
   headers.set('access-control-allow-headers', '*');
   headers.set('access-control-allow-methods', 'POST, GET, HEAD, OPTIONS');
   headers.set('access-control-allow-origin', env.get('ORIGIN'));
-  const authorization = request.headers.get('authorization') ?? '';
+  const authorization = request?.headers.get('authorization') ?? '';
   if (env.get('DEV') && authorization === `Bearer ${env.get('API_SECRET')}`) {
     headers.set('access-control-allow-origin', '*');
   }

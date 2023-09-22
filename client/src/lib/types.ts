@@ -10,15 +10,15 @@ export interface PlayStore {
 }
 
 export interface OfflineStore {
-  db: IDBDatabase | null;
-  cached: IDBValidKey[];
+  cached: string[];
   downloads: {[key: string]: OfflineDownload};
+  quota: number;
+  usage: number;
 }
 
 export interface OfflineDownload {
-  controller: AbortController;
-  length: number;
-  received: number;
+  contentLength: number;
+  contentSize: number;
   progress: number;
 }
 

@@ -1,7 +1,8 @@
 import * as log from 'log';
 import * as async from 'async';
-import * as base58 from 'base58';
 import {
+  CacheMessage,
+  CacheLog,
   CacheOptions,
   CacheResponse,
   CacheMetaEntry,
@@ -19,7 +20,11 @@ const worker = new Worker(new URL('./worker.ts', import.meta.url), {
   type: 'module'
 });
 
-worker.addEventListener('message', async (ev: MessageEvent) => {
+const workerMessage = (msg: CacheMessage) => {
+  worker.postMessage(msg);
+};
+
+worker.addEventListener('message', async (ev: MessageEvent<CacheMessage>) => {
   if (ev.data.type === 'ready') {
     workerMap.get('ready')!.resolve(true);
   }
@@ -33,28 +38,29 @@ worker.addEventListener('message', async (ev: MessageEvent) => {
     }
   }
   if (ev.data.type === 'check') {
-    const id = `check:${ev.data.id}`;
-    if (workerMap.has(id)) {
-      workerMap.get(id)!.resolve(ev.data.meta);
-      workerMap.delete(id);
+    const url = `check:${ev.data.url}`;
+    if (workerMap.has(url)) {
+      workerMap.get(url)!.resolve(ev.data.meta ?? null);
+      workerMap.delete(url);
     }
   }
   if (ev.data.type === 'log') {
-    const level: 'debug' | 'info' | 'warning' | 'error' = ev.data.level;
+    const data = ev.data as CacheLog;
+    const level: 'debug' | 'info' | 'warning' | 'error' = data.level;
     if (level === 'debug') {
-      log.getLogger('debug').debug(ev.data.msg);
+      log.getLogger('debug').debug(data.msg);
     } else {
-      log[level](ev.data.msg);
+      log[level](data.msg);
     }
   }
   if (ev.data.type === 'fetch') {
-    const data: CacheResponse = ev.data;
-    if (!fetchMap.has(data.id)) {
-      log.error(`Unknown ID (${data.id})`);
+    const data = ev.data as CacheResponse;
+    if (!fetchMap.has(data.url)) {
+      log.error(`Unknown URL (${data.url})`);
       return;
     }
-    const promise = fetchMap.get(data.id)!;
-    fetchMap.delete(data.id);
+    const promise = fetchMap.get(data.url)!;
+    fetchMap.delete(data.url);
     if (!Object.hasOwn(data, 'body')) {
       promise.reject(data.error);
     }
@@ -99,7 +105,7 @@ worker.addEventListener('error', (ev: Event) => {
 });
 
 export const close = async () => {
-  worker.postMessage({type: 'close'});
+  workerMessage({type: 'close'});
   await workerMap.get('closed')!;
   worker.terminate();
 };
@@ -107,17 +113,16 @@ export const close = async () => {
 export const cleanup = (): Promise<boolean> => {
   if (!workerMap.has('cleanup')) {
     workerMap.set('cleanup', async.deferred<boolean>());
-    worker.postMessage({type: 'cleanup'});
+    workerMessage({type: 'cleanup'});
   }
   return workerMap.get('cleanup')! as Promise<boolean>;
 };
 
 export const check = (url: URL): Promise<CacheMetaEntry | null> => {
-  const id = base58.encode(url.href);
-  const mapId = `check:${base58.encode(url.href)}`;
+  const mapId = `check:${url.href}`;
   if (!workerMap.has(mapId)) {
     workerMap.set(mapId, async.deferred<CacheMetaEntry | null>());
-    worker.postMessage({type: 'check', id});
+    workerMessage({type: 'check', url: url.href});
   }
   return workerMap.get(mapId)! as Promise<CacheMetaEntry | null>;
 };
@@ -126,24 +131,24 @@ export const fetchCache = async (
   url: URL,
   options: Partial<CacheOptions> = {}
 ): Promise<Response> => {
-  const id = base58.encode(url.href);
-  if (fetchMap.has(id)) {
-    return fetchMap.get(id)!;
+  if (fetchMap.has(url.href)) {
+    return fetchMap.get(url.href)!;
   }
   await workerMap.get('ready')!;
   const promise = async.deferred<Response>();
-  fetchMap.set(id, promise);
-  worker.postMessage({
+  fetchMap.set(url.href, promise);
+
+  workerMessage({
     type: 'fetch',
-    options,
-    id
+    url: url.href,
+    options
   });
   return promise;
 };
 
 addEventListener('podcast:remove', ((event: CustomEvent<Podcast>) => {
   const podcast = event.detail;
-  worker.postMessage({
+  workerMessage({
     type: 'delete',
     name: `artwork:${podcast.id}`
   });
@@ -151,7 +156,7 @@ addEventListener('podcast:remove', ((event: CustomEvent<Podcast>) => {
 
 addEventListener('episode:remove', ((event: CustomEvent<Episode>) => {
   const episode = event.detail;
-  worker.postMessage({
+  workerMessage({
     type: 'delete',
     name: `audio:${episode.id}`
   });

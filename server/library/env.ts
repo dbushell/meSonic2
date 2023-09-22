@@ -7,6 +7,7 @@ const prefixes = ['APP', 'DENO'];
 
 const expected = [
   'APP_API_SECRET',
+  'APP_SRC_DIR',
   'APP_DATA_DIR',
   'APP_MEDIA_DIR',
   'APP_BUILD_DIR',

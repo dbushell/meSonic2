@@ -8,6 +8,8 @@
 src/*
 !src/lib
 src/lib/*
+!src/workers
+src/workers/*
 !src/components
 src/components/*
 !src/components/icons

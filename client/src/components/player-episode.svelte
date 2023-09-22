@@ -3,9 +3,11 @@
   import {playerStore} from '$lib/stores';
   import {PUBLIC_API_URL} from '$env/static/public';
   import Wifioff from '$components/icons/wifioff.svelte';
+  import Floppy from '$components/icons/floppy.svelte';
 
   export let isLoaded: boolean;
   export let isOffline: boolean;
+  export let isDownload: boolean;
 
   $: episode = $playerStore as Episode;
 </script>
@@ -24,7 +26,7 @@
       <span class="visually-hidden">Loading…</span>
     </span>
   {/if}
-  {#if isOffline}<Wifioff />{/if}
+  {#if isOffline}<Wifioff />{:else if isDownload}<Floppy />{/if}
   <span>{episode.title}</span>
 </p>
 {#if episode.parent}

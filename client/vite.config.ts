@@ -39,5 +39,8 @@ export default defineConfig({
       path: '/hmr'
     }
   },
-  plugins: [sveltekit()]
+  plugins: [sveltekit()],
+  worker: {
+    format: 'es'
+  }
 });

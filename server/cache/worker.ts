@@ -3,12 +3,21 @@
 import * as fs from 'fs';
 import * as hex from 'hex';
 import * as path from 'path';
-import * as base58 from 'base58';
 import * as mediaTypes from 'media_types';
 import * as env from '../library/env.ts';
 import * as timer from '../library/timer.ts';
-import {CacheOptions, CacheItem, CacheMeta, CacheResponse} from '../types.ts';
+import {
+  CacheMessage,
+  CacheOptions,
+  CacheItem,
+  CacheMeta,
+  CacheResponse
+} from '../types.ts';
 import {log} from './log.ts';
+
+const sendMessage = (msg: CacheMessage) => {
+  self.postMessage(msg);
+};
 
 const cacheDir = path.join(env.get('DATA_DIR'), 'cache');
 
@@ -40,23 +49,29 @@ const fetchQueue: Array<CacheItem> = [];
 
 // Add next fetch request to queue
 const fetchNext = () => {
-  if (fetchQueue.length < 1 || fetchActive.size >= 5) {
+  if (fetchQueue.length < 1) {
     return;
   }
+  // Limit simultaneous non-JSON fetches
+  if (!fetchQueue.at(0)!.options.accept[0].startsWith('application/json')) {
+    if (fetchActive.size >= 5) {
+      return;
+    }
+  }
   const item = fetchQueue.shift()!;
-  fetchActive.set(item.id, item);
+  fetchActive.set(item.url, item);
   item.callback();
 };
 
 log.info(`Cache worker ready`);
-self.postMessage({type: 'ready'});
+sendMessage({type: 'ready'});
 
-self.addEventListener('message', async (ev: MessageEvent) => {
+self.addEventListener('message', async (ev: MessageEvent<CacheMessage>) => {
   if (ev.data.type === 'fetch') {
-    return await handleFetch(ev.data.id, ev.data.options);
+    return await handleFetch(ev.data.url!, ev.data.options);
   }
   if (ev.data.type === 'delete') {
-    return handleDelete(ev.data.name);
+    return handleDelete(ev.data.name!);
   }
   if (ev.data.type === 'close') {
     return handleClose();
@@ -65,15 +80,15 @@ self.addEventListener('message', async (ev: MessageEvent) => {
     return handleCleanup();
   }
   if (ev.data.type === 'check') {
-    const props = {
+    const props: CacheMessage = {
       type: 'check',
-      id: ev.data.id,
+      url: ev.data.url,
       meta: null
     };
-    if (Object.hasOwn(cacheMeta, ev.data.id)) {
-      props.meta = structuredClone(cacheMeta[ev.data.id]);
+    if (Object.hasOwn(cacheMeta, ev.data.url!)) {
+      props.meta = structuredClone(cacheMeta[ev.data.url!]);
     }
-    self.postMessage(props);
+    sendMessage(props);
     return;
   }
 });
@@ -111,18 +126,18 @@ const handleCleanup = async () => {
     log.error(err);
   }
   await Deno.writeTextFile(cacheMetaPath, JSON.stringify(cacheMeta, null, 2));
-  self.postMessage({type: 'cleanup'});
+  sendMessage({type: 'cleanup'});
 };
 
 const handleClose = async () => {
   await Deno.writeTextFile(cacheMetaPath, JSON.stringify(cacheMeta, null, 2));
   fetchActive.forEach((item) => {
-    log.warning(`Abort fetch (${item.id})`);
+    log.warning(`Abort fetch (${item.url})`);
     item.controller.abort();
   });
   fetchQueue.forEach((item) => item.controller.abort());
   log.warning(`Close cache`);
-  self.postMessage({type: 'close'});
+  sendMessage({type: 'close'});
   self.close();
 };
 
@@ -142,11 +157,14 @@ const handleDelete = async (name: string) => {
   }
 };
 
-const handleFetch = async (id: string, options: CacheOptions) => {
-  const cacheName = await sha1Hash(options.name ?? id);
+const handleFetch = async (
+  url: string,
+  options: Partial<CacheOptions> = {}
+) => {
+  const cacheName = await sha1Hash(options.name ?? url);
   const cachePath = path.join(cacheDir, cacheName);
   const item = {
-    id,
+    url,
     name: cacheName,
     path: cachePath,
     options: {
@@ -157,8 +175,8 @@ const handleFetch = async (id: string, options: CacheOptions) => {
     } as CacheOptions,
     controller: new AbortController(),
     callback: () =>
-      fetchAndCache(id).finally(() => {
-        fetchActive.delete(item.id);
+      fetchAndCache(url).finally(() => {
+        fetchActive.delete(item.url);
         fetchNext();
       })
   };
@@ -176,52 +194,52 @@ const handleFetch = async (id: string, options: CacheOptions) => {
   fetchNext();
 };
 
-const fetchAndCache = async (id: string) => {
-  const item = fetchActive.get(id);
+const fetchAndCache = async (url: string) => {
+  const item = fetchActive.get(url);
   if (!item) {
-    log.warning(`Lost fetch (${id})`);
+    log.warning(`Lost fetch (${url})`);
     return;
   }
   if (item.controller.signal.aborted) {
-    log.warning(`Aborted fetch (${id})`);
+    log.warning(`Aborted fetch (${url})`);
     return;
   }
   try {
     // Validate URL before fetch
-    new URL(new TextDecoder().decode(base58.decode(id)));
+    new URL(url);
     // Return from cache if available
     if (fetchFromCache(item)) {
       return;
     }
     await fetchFromFresh(item);
   } catch (error) {
-    delete cacheMeta[id];
+    delete cacheMeta[url];
     await Deno.remove(item.path).catch(() => {});
-    log.warning(`Fail (${id})`);
-    self.postMessage({type: 'fetch', id, error} as CacheResponse);
+    log.warning(`Fail (${url})`);
+    sendMessage({type: 'fetch', url, error} as CacheResponse);
     return;
   }
 };
 
 export const fetchFromCache = (item: CacheItem): boolean => {
-  const {id, name, options} = item;
-  if (!Object.hasOwn(cacheMeta, id)) {
+  const {url, name, options} = item;
+  if (!Object.hasOwn(cacheMeta, url)) {
     return false;
   }
-  const cached = cacheMeta[id];
+  const cached = cacheMeta[url];
   if (cached.name !== name) {
-    log.warning(`Name mismatch "${name}" : "${cached.name}" (${id})`);
-    delete cacheMeta[id];
+    log.warning(`Name mismatch "${name}" : "${cached.name}" (${url})`);
+    delete cacheMeta[url];
     return false;
   }
   const age = Date.now() - new Date(cached.created).getTime();
   if (age > options.maxAge || age > timer.DAY * 60) {
-    delete cacheMeta[id];
+    delete cacheMeta[url];
     return false;
   }
   const message: CacheResponse = {
     type: 'fetch',
-    id,
+    url,
     body: options.prefetch ? null : item.path,
     headers: {
       'content-type': cached.contentType,
@@ -232,26 +250,27 @@ export const fetchFromCache = (item: CacheItem): boolean => {
   if (cached.compressed) {
     message.headers['content-encoding'] = 'gzip';
   }
-  log.debug(`Hit (${id})`);
-  self.postMessage(message);
+  log.debug(`Hit (${url})`);
+  sendMessage(message);
   return true;
 };
 
 export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
-  const {id, options} = item;
-  const url = new URL(new TextDecoder().decode(base58.decode(id)));
-  log.debug(`Miss (${JSON.stringify({id, ...options})})`);
+  const {url, options} = item;
+  log.debug(`Miss (${JSON.stringify({url, ...options})})`);
   // Add authorization headers for known hosts
   const headers = new Headers();
-  await addHeaders(headers, url);
+  await addHeaders(headers, new URL(url));
   headers.set('accept', options.accept.join(', '));
   // Fetch response
-  const response = await fetch(url.href, {
+  const response = await fetch(url, {
     signal: item.controller.signal,
     headers
   });
   if (!response.ok || !response.body) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    throw new Error(
+      `${response.status} ${response.statusText}: ${await response.text()}`
+    );
   }
   // Validate content type or infer from file extension
   let contentType = response.headers.get('content-type') ?? '';
@@ -261,7 +280,7 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
       .map((type) => type.split(';')[0])
       .includes(contentType.split(';')[0])
   ) {
-    let ext = path.extname(url.href);
+    let ext = path.extname(url);
     if (options.accept[0] === 'application/json') {
       ext = '.json';
     }
@@ -269,7 +288,7 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
       contentType = mediaTypes.contentType(ext) ?? '';
     }
   }
-  cacheMeta[id] = {
+  cacheMeta[url] = {
     contentType,
     name: item.name,
     compressed: options.compress,
@@ -277,7 +296,7 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
   };
   const message: CacheResponse = {
     type: 'fetch',
-    id,
+    url,
     body: options.prefetch ? null : item.path,
     headers: {
       'content-type': contentType,
@@ -286,14 +305,6 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
     }
   };
   try {
-    // TODO: shouldn't be necessary
-    // but getting "WriteZero: failed to write whole buffer"
-    // try {
-    //   Deno.remove(item.path);
-    // } catch {
-    //   // Do nothing...
-    // }
-    // await fs.ensureFile(item.path);
     const file = await Deno.open(item.path, {
       write: true,
       create: true,
@@ -305,14 +316,13 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
       message.headers['content-encoding'] = 'gzip';
     }
     await stream.pipeTo(file.writable);
-    // await Deno.writeFile(item.path, stream);
   } catch (err) {
-    log.error(`Fresh (${id})`);
+    log.error(`Fresh (${url})`);
     await Deno.remove(item.path);
-    delete cacheMeta[id];
+    delete cacheMeta[url];
     throw new Error(err);
   }
-  self.postMessage(message);
+  sendMessage(message);
 };
 
 const addHeaders = async (headers: Headers, url: URL) => {

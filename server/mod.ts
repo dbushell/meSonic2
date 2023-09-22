@@ -25,6 +25,7 @@ timer.setTimer(
   true
 );
 
+
 timer.setTimer(
   'podcast sync',
   timer.HOUR,
@@ -56,6 +57,7 @@ timer.setTimer(
   false,
   false
 );
+
 
 server.serve({
   port: Number.parseInt(env.get('PORT')),

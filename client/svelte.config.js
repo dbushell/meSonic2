@@ -1,5 +1,5 @@
 import {vitePreprocess} from '@sveltejs/kit/vite';
-import adapter from './adapter.js';
+import adapter from 'sveltekit-adapter-deno';
 
 let directives = {};
 if (process.env.NODE_ENV === 'production') {
@@ -26,6 +26,7 @@ const config = {
       register: process.env.NODE_ENV !== 'development'
     },
     alias: {
+      $workers: 'src/workers',
       $components: 'src/components',
       $apiTypes: '../server/types'
     },

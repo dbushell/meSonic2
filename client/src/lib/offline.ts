@@ -2,143 +2,109 @@ import {get} from 'svelte/store';
 import {offlineStore} from '$lib/stores';
 import type {AddOffline} from '$lib/types';
 
-export const loadIndexedDB = async () => {
-  const open = globalThis.indexedDB.open('mesonic', 1);
-  open.addEventListener('upgradeneeded', (ev: IDBVersionChangeEvent) => {
-    open.result.createObjectStore('downloads');
+// https://vitejs.dev/guide/features.html#import-with-query-suffixes
+import workerURL from '$workers/offline.ts?worker&url';
+
+let worker: Worker;
+
+export const initStore = async (): Promise<void> => {
+  worker = new Worker(workerURL, {
+    type: 'module'
   });
-  open.addEventListener('success', (ev: Event) => {
-    offlineStore.set({...get(offlineStore), db: open.result});
-    updateStore();
+
+  worker.addEventListener('message', (ev) => {
+    const {id, type} = ev.data;
+    if (type === 'abort') {
+      removeOffline(id);
+      return;
+    }
+    if (type === 'progress') {
+      const offline = get(offlineStore);
+      const {contentLength, contentSize} = ev.data;
+      offline.downloads[id] = {
+        contentLength,
+        contentSize,
+        progress: (100 / contentLength) * contentSize
+      };
+      offlineStore.set(offline);
+      return;
+    }
+    if (type === 'done') {
+      const {contentType, contentSize} = ev.data;
+      // clear progress
+      const offline = get(offlineStore);
+      delete offline.downloads[id];
+      offlineStore.set(offline);
+      // save metadata if successful
+      if (contentType && contentSize) {
+        localStorage.setItem(
+          id,
+          JSON.stringify({
+            contentType,
+            contentSize
+          })
+        );
+      }
+      updateStore();
+      return;
+    }
   });
-  open.addEventListener('error', (ev) => {
-    console.debug(ev);
-  });
+
+  await updateStore();
 };
 
 const updateStore = async (): Promise<void> => {
-  return new Promise(async (resolve) => {
-    const {db} = get(offlineStore);
-    if (!db) {
-      console.error('No IDBDatabase');
-      return resolve();
+  try {
+    const root = await navigator.storage.getDirectory();
+    const cached = [];
+    for await (const [key] of root.entries()) {
+      cached.push(key);
     }
-    const transaction = db.transaction(['downloads'], 'readwrite');
-    const downloads = transaction.objectStore('downloads');
-    const request = downloads.getAllKeys();
-    request.addEventListener('success', () => {
-      offlineStore.set({...get(offlineStore), cached: [...request.result]});
-      resolve();
+    offlineStore.set({...get(offlineStore), cached});
+
+    navigator.storage.estimate().then(({quota, usage}) => {
+      offlineStore.set({
+        ...get(offlineStore),
+        quota: quota ?? 0,
+        usage: usage ?? 0
+      });
     });
-    request.addEventListener('error', () => {
-      console.debug(request.error);
-      resolve();
-    });
-  });
+  } catch (err) {
+    console.error(err);
+  }
 };
 
-export const getOffline = async (id: IDBValidKey): Promise<Blob | null> => {
-  return new Promise(async (resolve) => {
-    const {db} = get(offlineStore);
-    if (!db) {
-      console.error('No IDBDatabase');
-      return resolve(null);
+export const getOffline = async (id: string): Promise<Blob | null> => {
+  try {
+    const meta = JSON.parse(localStorage.getItem(id) ?? '{}');
+    if (!meta.contentType) {
+      throw new Error(`No metadata (${id})`);
     }
-    const transaction = db.transaction(['downloads']);
-    const request = transaction.objectStore('downloads').get(id);
-    request.addEventListener('success', () => {
-      resolve(request.result);
-    });
-    request.addEventListener('error', () => {
-      console.debug(request.error);
-      resolve(null);
-    });
-  });
+    const root = await navigator.storage.getDirectory();
+    const handle = await root.getFileHandle(id);
+    const file = await handle.getFile();
+    return new Blob([file], {type: meta.contentType});
+  } catch (err) {
+    console.error(err);
+    removeOffline(id);
+  } finally {
+    await updateStore();
+  }
+  return null;
 };
 
-export const removeOffline = async (id: IDBValidKey): Promise<void> => {
-  return new Promise(async (resolve) => {
-    const {db} = get(offlineStore);
-    if (!db) {
-      console.error('No IDBDatabase');
-      return resolve();
-    }
-    const transaction = db.transaction(['downloads'], 'readwrite');
-    const request = transaction.objectStore('downloads').delete(id);
-    request.addEventListener('success', async () => {
-      await updateStore();
-      resolve();
-    });
-    request.addEventListener('error', () => {
-      console.debug(request.error);
-      resolve();
-    });
-  });
+export const removeOffline = async (id: string): Promise<void> => {
+  try {
+    localStorage.removeItem(id);
+    const root = await navigator.storage.getDirectory();
+    await root.removeEntry(id);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    await updateStore();
+  }
 };
 
 export const addOffline = async ({id, url}: AddOffline): Promise<void> => {
-  return new Promise(async (resolve) => {
-    const offline = get(offlineStore);
-    if (!offline.db) {
-      console.error('No IDBDatabase');
-      return resolve();
-    }
-    if (Object.keys(offline.downloads).includes(id)) {
-      resolve();
-      return;
-    }
-    const controller = new AbortController();
-    try {
-      const update = (length = 0, received = 0) => {
-        const offline = get(offlineStore);
-        offline.downloads[id] = {
-          controller,
-          length,
-          received,
-          progress: (100 / length) * received
-        };
-        offlineStore.set(offline);
-      };
-      const response = await fetch(url, {signal: controller.signal});
-      if (!response.ok) {
-        throw new Error(`${response.status} ${response.statusText}`);
-      }
-      if (!response.body) {
-        throw new Error('No response body');
-      }
-      const reader = response.body.getReader();
-      const type = response.headers.get('content-type') ?? '';
-      const length = Number.parseInt(
-        response.headers.get('content-length') ?? '0'
-      );
-      let received = 0;
-      let chunks = [];
-      update(length, received);
-      while (true) {
-        const {done, value} = await reader.read();
-        if (done) {
-          break;
-        }
-        received += value.length;
-        chunks.push(value);
-        update(length, received);
-      }
-      const blob = new Blob(chunks, {type});
-      const transaction = offline.db.transaction(['downloads'], 'readwrite');
-      const request = transaction.objectStore('downloads').put(blob, id);
-      request.addEventListener('success', async () => {
-        delete offline.downloads[id];
-        await updateStore();
-        resolve();
-      });
-      request.addEventListener('error', () => {
-        throw new Error();
-      });
-    } catch (err) {
-      controller.abort();
-      delete offline.downloads[id];
-      console.debug(err);
-      resolve();
-    }
-  });
+  worker.postMessage({type: 'download', id, url: url.href});
 };
