@@ -286,7 +286,6 @@ export interface CacheItem {
   path: string;
   options: CacheOptions;
   controller: AbortController;
-  callback: () => Promise<unknown>;
 }
 
 export interface CacheResponse extends CacheMessage {

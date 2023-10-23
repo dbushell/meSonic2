@@ -1,12 +1,13 @@
 /// <reference lib="WebWorker"/>
 
 import * as fs from 'fs';
-import * as hex from 'hex';
 import * as path from 'path';
 import * as mediaTypes from 'media_types';
 import * as env from '../library/env.ts';
 import * as timer from '../library/timer.ts';
-import {
+import {Queue} from 'queue';
+import {encodeHex} from 'hex';
+import type {
   CacheMessage,
   CacheOptions,
   CacheItem,
@@ -15,23 +16,9 @@ import {
 } from '../types.ts';
 import {log} from './log.ts';
 
-const sendMessage = (msg: CacheMessage) => {
-  self.postMessage(msg);
-};
-
 const cacheDir = path.join(env.get('DATA_DIR'), 'cache');
 
 const cacheExt = new Set(['.json', '.avif', '.webp', '.png', '.jpeg', '.jpg']);
-
-const sha1Hash = async (str: string) => {
-  return new TextDecoder().decode(
-    hex.encode(
-      new Uint8Array(
-        await crypto.subtle.digest('sha-1', new TextEncoder().encode(str))
-      )
-    )
-  );
-};
 
 const cacheMetaPath = path.join(env.get('DATA_DIR'), 'cache.json');
 
@@ -41,57 +28,62 @@ const cacheMeta = JSON.parse(
   (await Deno.readTextFile(cacheMetaPath)) || '{}'
 ) as CacheMeta;
 
-// Fetch requests being processed
-const fetchActive = new Map<string, CacheItem>();
+const queue = new Queue<CacheItem, boolean>({
+  concurrency: 5
+});
 
-// Fetch requests waiting to be processed
-const fetchQueue: Array<CacheItem> = [];
+// Prioritize fetch queue items by content type
+const sortValue = (item: CacheItem) => {
+  if (item.options.accept[0].startsWith('application/json')) return 1;
+  if (item.options.accept[0].startsWith('image/')) return 2;
+  if (item.options.accept[0].startsWith('audio/')) return 4;
+  return 3;
+};
 
-// Add next fetch request to queue
-const fetchNext = () => {
-  if (fetchQueue.length < 1) {
-    return;
-  }
-  // Limit simultaneous non-JSON fetches
-  if (!fetchQueue.at(0)!.options.accept[0].startsWith('application/json')) {
-    if (fetchActive.size >= 5) {
-      return;
-    }
-  }
-  const item = fetchQueue.shift()!;
-  fetchActive.set(item.url, item);
-  item.callback();
+const hash = async (str: string) =>
+  encodeHex(
+    new Uint8Array(
+      await crypto.subtle.digest('sha-1', new TextEncoder().encode(str))
+    )
+  );
+
+const sendMessage = (msg: CacheMessage) => {
+  self.postMessage(msg);
 };
 
 log.info(`Cache worker ready`);
+
 sendMessage({type: 'ready'});
 
-self.addEventListener('message', async (ev: MessageEvent<CacheMessage>) => {
-  if (ev.data.type === 'fetch') {
-    return await handleFetch(ev.data.url!, ev.data.options);
-  }
-  if (ev.data.type === 'delete') {
-    return handleDelete(ev.data.name!);
-  }
-  if (ev.data.type === 'close') {
-    return handleClose();
+self.addEventListener('message', (ev: MessageEvent<CacheMessage>) => {
+  if (ev.data.type === 'check') {
+    return handleCheck(ev.data.url!);
   }
   if (ev.data.type === 'cleanup') {
     return handleCleanup();
   }
-  if (ev.data.type === 'check') {
-    const props: CacheMessage = {
-      type: 'check',
-      url: ev.data.url,
-      meta: null
-    };
-    if (Object.hasOwn(cacheMeta, ev.data.url!)) {
-      props.meta = structuredClone(cacheMeta[ev.data.url!]);
-    }
-    sendMessage(props);
-    return;
+  if (ev.data.type === 'close') {
+    return handleClose();
+  }
+  if (ev.data.type === 'delete') {
+    return handleDelete(ev.data.name!);
+  }
+  if (ev.data.type === 'fetch') {
+    return handleFetch(ev.data.url!, ev.data.options);
   }
 });
+
+const handleCheck = (url: string) => {
+  const props: CacheMessage = {
+    type: 'check',
+    meta: null,
+    url
+  };
+  if (Object.hasOwn(cacheMeta, url)) {
+    props.meta = structuredClone(cacheMeta[url]);
+  }
+  sendMessage(props);
+};
 
 const handleCleanup = async () => {
   log.debug(`Cleanup cache`);
@@ -131,11 +123,11 @@ const handleCleanup = async () => {
 
 const handleClose = async () => {
   await Deno.writeTextFile(cacheMetaPath, JSON.stringify(cacheMeta, null, 2));
-  fetchActive.forEach((item) => {
+  queue.getPending().forEach((item) => {
     log.warning(`Abort fetch (${item.url})`);
     item.controller.abort();
   });
-  fetchQueue.forEach((item) => item.controller.abort());
+  queue.getQueued().forEach((item) => item.controller.abort());
   log.warning(`Close cache`);
   sendMessage({type: 'close'});
   self.close();
@@ -143,7 +135,7 @@ const handleClose = async () => {
 
 const handleDelete = async (name: string) => {
   try {
-    const cacheName = await sha1Hash(name);
+    const cacheName = await hash(name);
     const cachePath = path.join(cacheDir, cacheName);
     for (const key of Object.keys(cacheMeta)) {
       if (cacheMeta[key].name === cacheName) {
@@ -161,9 +153,9 @@ const handleFetch = async (
   url: string,
   options: Partial<CacheOptions> = {}
 ) => {
-  const cacheName = await sha1Hash(options.name ?? url);
+  const cacheName = await hash(options.name ?? url);
   const cachePath = path.join(cacheDir, cacheName);
-  const item = {
+  const item: CacheItem = {
     url,
     name: cacheName,
     path: cachePath,
@@ -173,51 +165,33 @@ const handleFetch = async (
       accept: options.accept ?? ['application/json'],
       prefetch: options.prefetch ?? false
     } as CacheOptions,
-    controller: new AbortController(),
-    callback: () =>
-      fetchAndCache(url).finally(() => {
-        fetchActive.delete(item.url);
-        fetchNext();
-      })
+    controller: new AbortController()
   };
-  // Pritorize JSON over images over everything else
-  fetchQueue.push(item);
-  const sortValue = (item: CacheItem) => {
-    if (item.options.accept[0].startsWith('application/json')) return 1;
-    if (item.options.accept[0].startsWith('image/')) return 2;
-    if (item.options.accept[0].startsWith('audio/')) return 4;
-    return 3;
-  };
-  fetchQueue.sort((a, b) => {
-    return sortValue(a) - sortValue(b);
-  });
-  fetchNext();
+  queue.append(item, fetchAndCache);
+  queue.sort((a, b) => sortValue(a) - sortValue(b));
 };
 
-const fetchAndCache = async (url: string) => {
-  const item = fetchActive.get(url);
-  if (!item) {
-    log.warning(`Lost fetch (${url})`);
-    return;
-  }
+const fetchAndCache = async (item: CacheItem): Promise<boolean> => {
+  const {url} = item;
   if (item.controller.signal.aborted) {
     log.warning(`Aborted fetch (${url})`);
-    return;
+    return false;
   }
   try {
     // Validate URL before fetch
     new URL(url);
     // Return from cache if available
     if (fetchFromCache(item)) {
-      return;
+      return true;
     }
     await fetchFromFresh(item);
+    return true;
   } catch (error) {
     delete cacheMeta[url];
     await Deno.remove(item.path).catch(() => {});
     log.warning(`Fail (${url})`);
     sendMessage({type: 'fetch', url, error} as CacheResponse);
-    return;
+    return false;
   }
 };
 
@@ -258,9 +232,7 @@ export const fetchFromCache = (item: CacheItem): boolean => {
 export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
   const {url, options} = item;
   log.debug(`Miss (${JSON.stringify({url, ...options})})`);
-  // Add authorization headers for known hosts
   const headers = new Headers();
-  await addHeaders(headers, new URL(url));
   headers.set('accept', options.accept.join(', '));
   // Fetch response
   const response = await fetch(url, {
@@ -323,22 +295,4 @@ export const fetchFromFresh = async (item: CacheItem): Promise<void> => {
     throw new Error(err);
   }
   sendMessage(message);
-};
-
-const addHeaders = async (headers: Headers, url: URL) => {
-  if (
-    url.hostname === 'api.podcastindex.org' &&
-    url.pathname.startsWith('/api')
-  ) {
-    const authUserAgent = env.get('PODCASTINDEX_USERAGENT');
-    const authKey = env.get('PODCASTINDEX_APIKEY');
-    const authDate = Math.floor(Date.now() / 1000).toString();
-    const authorization = await sha1Hash(
-      `${authKey}${env.get('PODCASTINDEX_SECRET')}${authDate}`
-    );
-    headers.set('user-agent', authUserAgent);
-    headers.set('x-auth-key', authKey);
-    headers.set('x-auth-date', authDate);
-    headers.set('authorization', authorization);
-  }
 };

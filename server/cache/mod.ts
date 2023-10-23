@@ -1,6 +1,6 @@
 import * as log from 'log';
 import * as async from 'async';
-import {
+import type {
   CacheMessage,
   CacheLog,
   CacheOptions,

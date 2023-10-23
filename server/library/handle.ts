@@ -2,7 +2,7 @@ import * as env from './env.ts';
 import {serveFile} from 'file_server';
 import * as db from '../database/mod.ts';
 import * as api from './api.ts';
-import {
+import type {
   RemovePodcast,
   AddBookmark,
   Bookmark,

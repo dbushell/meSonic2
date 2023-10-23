@@ -1,9 +1,9 @@
 import * as log from 'log';
 import * as uuid from 'uuid';
-import {BindValue} from 'sqlite3';
-import {db, getArtist, getAlbum, getBookmark} from './mod.ts';
-import {Artist, Album, Song, GetSong, AddSong} from '../types.ts';
 import {naturalSort} from './shared.ts';
+import {db, getArtist, getAlbum, getBookmark} from './mod.ts';
+import type {BindValue} from 'sqlite3';
+import type {Artist, Album, Song, GetSong, AddSong} from '../types.ts';
 
 const emoji = '🎧 ';
 
@@ -57,7 +57,7 @@ export const getSong = (params: GetSong = {}): Song[] => {
         song.bookmarks = getBookmark({parent_id: song.id});
       }
     }
-    songs.forEach(song => {
+    songs.forEach((song) => {
       song.duration = song.duration / 1000;
     });
     naturalSort<Song>(songs);

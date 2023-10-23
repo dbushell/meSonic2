@@ -1,6 +1,6 @@
 /// <reference lib="WebWorker"/>
 
-import {CacheLog} from '../types.ts';
+import type {CacheLog} from '../types.ts';
 
 const postLog = (msg: CacheLog) => {
   self.postMessage(msg);

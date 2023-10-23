@@ -1,9 +1,9 @@
 import * as log from 'log';
 import * as uuid from 'uuid';
-import {BindValue} from 'sqlite3';
-import {db, getArtist, getSong} from './mod.ts';
-import {Artist, Album, GetAlbum, AddAlbum} from '../types.ts';
 import {naturalSort} from './shared.ts';
+import {db, getArtist, getSong} from './mod.ts';
+import type {BindValue} from 'sqlite3';
+import type {Artist, Album, GetAlbum, AddAlbum} from '../types.ts';
 
 const emoji = '💿 ';
 

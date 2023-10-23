@@ -8,7 +8,6 @@ database/*
 library/*
 !schema
 schema/*
-!wasm_brotli
 !**/*.json
 !**/*.ts
 !**/*.sql

@@ -3,7 +3,7 @@ import * as path from 'path';
 import {duration as audioDuration} from 'audio_duration';
 import * as db from '../database/mod.ts';
 import * as env from '../library/env.ts';
-import {
+import type {
   Artist,
   Album,
   Song,

@@ -1,32 +1,54 @@
 import * as log from 'log';
+import * as html from 'html';
+import * as xml from 'xml_streamify';
 import * as timer from '../library/timer.ts';
 import * as cache from '../cache/mod.ts';
 import * as db from '../database/mod.ts';
-import {Podcast, Episode} from '../types.ts';
+import {Queue} from 'queue';
+import type {Podcast, Episode, AddPodcast, AddEpisode} from '../types.ts';
+
+const queue = new Queue<Podcast, boolean>({
+  concurrency: 3
+});
 
 export const addPodcastByFeed = async (
   url: string
 ): Promise<Podcast | undefined> => {
   try {
-    // https://podcastindex-org.github.io/docs-api/#get-/podcasts/byfeedurl
-    const apiUrl = new URL(
-      'https://api.podcastindex.org/api/1.0/podcasts/byfeedurl'
-    );
-    apiUrl.searchParams.set('url', url);
-    const response = await cache.fetchCache(new URL(apiUrl));
-    const text = await response.text();
-    const json = JSON.parse(text);
-    if (json.status !== 'true') {
-      throw new Error(json.description ?? 'no description');
-    }
-    const props = {
-      id: json.feed.podcastGuid,
-      url: json.feed.url,
-      title: json.feed.title,
-      modified_at: new Date(json.feed.lastUpdateTime * 1000).toISOString()
+    const props: AddPodcast = {
+      id: crypto.randomUUID(),
+      url: url,
+      title: '',
+      modified_at: ''
     };
-    let podcast = db.getPodcast({id: props.id});
+    const controller = new AbortController();
+    const parser = xml.parse(url, {
+      signal: controller.signal
+    });
+    for await (const node of parser) {
+      if (node.is('channel', 'title')) {
+        props.title = html.unescape(node.innerText.trim());
+      }
+      if (node.is('channel', 'lastBuildDate')) {
+        props.modified_at = new Date(node.innerText).toISOString();
+      }
+      if (node.is('channel', 'pubDate')) {
+        props.modified_at = new Date(node.innerText).toISOString();
+      }
+      if (props.title && props.modified_at) {
+        controller.abort();
+        break;
+      }
+    }
+    if (!props.title) {
+      throw new Error(`Feed missing title ("${url}")`);
+    }
+    if (!props.modified_at) {
+      props.modified_at = new Date().toISOString();
+    }
+    let podcast = db.getPodcast({url: props.url});
     if (podcast.length) {
+      props.id = podcast[0].id;
       db.updatePodcast(props);
     } else {
       db.addPodcast(props);
@@ -39,82 +61,77 @@ export const addPodcastByFeed = async (
   }
 };
 
-// TODO: podcast index types
-// deno-lint-ignore no-explicit-any
-export const getPodcastMeta = async (podcast: Podcast): Promise<any> => {
-  try {
-    // https://podcastindex-org.github.io/docs-api/#get-/podcasts/byfeedurl
-    const apiUrl = new URL(
-      'https://api.podcastindex.org/api/1.0/podcasts/byguid'
-    );
-    apiUrl.searchParams.set('guid', podcast.id);
-    const response = await cache.fetchCache(new URL(apiUrl), {
-      maxAge: timer.DAY
-    });
-    const text = await response.text();
-    const json = JSON.parse(text);
-    if (json.status !== 'true') {
-      throw new Error(json.description ?? 'no description');
-    }
-    return json;
-  } catch (err) {
-    log.error(err);
-    return;
-  }
-};
+export const syncPodcast = (podcast: Podcast) =>
+  queue.append(podcast, syncCallback);
 
-// TODO: podcast index types
-// deno-lint-ignore no-explicit-any
-export const getEpisodesMeta = async (podcast: Podcast): Promise<any> => {
+const syncCallback = async (podcast: Podcast): Promise<boolean> => {
   try {
-    // https://podcastindex-org.github.io/docs-api/#get-/episodes/bypodcastguid
-    const apiUrl = new URL(
-      'https://api.podcastindex.org/api/1.0/episodes/bypodcastguid'
-    );
-    apiUrl.searchParams.set('guid', podcast.id);
-    apiUrl.searchParams.set('max', '100');
-    const response = await cache.fetchCache(new URL(apiUrl), {
-      maxAge: timer.HOUR
+    let title = podcast.title;
+    const episodes: AddEpisode[] = [];
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort('timeout');
+    }, 10_000);
+    const parser = xml.parse(podcast.url, {
+      signal: controller.signal
     });
-    const text = await response.text();
-    const json = JSON.parse(text);
-    if (json.status !== 'true' || !Array.isArray(json.items)) {
-      // TODO: re-add feed if guid does not match?
-      throw new Error(JSON.stringify(json));
-    }
-    return json;
-  } catch (err) {
-    log.error(podcast);
-    log.error(err);
-    return;
-  }
-};
 
-export const syncPodcast = async (podcast: Podcast): Promise<unknown> => {
-  try {
-    const tasks: Promise<unknown>[] = [];
-    const meta = await getEpisodesMeta(podcast);
-    if (!meta) {
-      throw new Error('no episode meta');
+    for await (const node of parser) {
+      // Check for title change
+      if (node.is('channel', 'title')) {
+        title = html.unescape(node.innerText.trim());
+      }
+      if (node.is('channel', 'item')) {
+        const enclosure = node.first('enclosure');
+        if (!enclosure) continue;
+        let duration = 0;
+        const durationText = node.first('itunes:duration')?.innerText;
+        if (durationText) {
+          for (const [i, n] of durationText.split(':').reverse().entries()) {
+            duration += Number.parseInt(n) * Math.pow(60, i);
+          }
+        }
+        // Remove query string from url
+        const url = new URL(enclosure.attributes.url);
+        url.search = '';
+        const props: AddEpisode = {
+          duration,
+          parent_id: podcast.id,
+          id: crypto.randomUUID(),
+          url: url.href,
+          title: html.unescape(node.first('title')?.innerText?.trim() ?? ''),
+          length: Number.parseInt(enclosure.attributes.length ?? '0'),
+          type: enclosure.attributes.type ?? '',
+          modified_at: new Date(
+            node.first('pubDate')?.innerText.trim() || Date.now()
+          ).toISOString()
+        };
+        episodes.push(props);
+        if (episodes.length >= 100) {
+          controller.abort();
+          break;
+        }
+      }
     }
-    tasks.push(fetchArtwork(podcast));
+
+    clearTimeout(timeout);
+    if (controller.signal.reason === 'timeout') {
+      throw new Error(`sync timeout ("${title}")`);
+    }
+
+    if (!episodes.length) {
+      throw new Error(`sync no episodes ("${title}")`);
+    }
+
     const episodeIds = new Set<string>();
     const oldEpisodes = db.getEpisode({parent_id: podcast.id});
 
-    // deno-lint-ignore no-explicit-any
-    meta.items.forEach((item: any) => {
-      const props = {
-        url: item.enclosureUrl,
-        title: item.title,
-        duration: item.duration,
-        type: item.enclosureType,
-        length: item.enclosureLength,
-        modified_at: new Date(item.datePublished * 1000).toISOString()
-      };
+    episodes.forEach((props) => {
       const episode = oldEpisodes.find(
         (e) => e.title === props.title && e.url === props.url
       );
       if (episode) {
+        props.id = episode.id;
         episodeIds.add(episode.id);
         // Only update if a property has changed
         if (
@@ -123,14 +140,11 @@ export const syncPodcast = async (podcast: Podcast): Promise<unknown> => {
           )
         ) {
           db.updateEpisode({
-            id: episode.id,
             ...props
           });
         }
       } else {
         db.addEpisode({
-          id: crypto.randomUUID(),
-          parent_id: podcast.id,
           ...props
         });
       }
@@ -143,63 +157,81 @@ export const syncPodcast = async (podcast: Podcast): Promise<unknown> => {
       });
     // Fetch new episode audio (latest only?)
     const newEpisodes = db.getEpisode({parent_id: podcast.id});
+    if (!newEpisodes.length) {
+      return false;
+    }
     db.updatePodcast({
+      title,
       id: podcast.id,
       modified_at: newEpisodes[0].modified_at
     });
-    tasks.push(fetchAudio(newEpisodes[0]));
-    return Promise.all(tasks);
+    await Promise.all([
+      fetchArtwork(podcast).catch((err) => {
+        log.debug(err);
+      }),
+      fetchAudio(newEpisodes[0]).catch((err) => {
+        log.debug(err);
+      })
+    ]);
   } catch (err) {
-    log.error(`sync podcast: ${err}`);
+    log.error(err);
+    return false;
   }
+  return true;
 };
 
-export const fetchAudio = async (
+export const fetchAudio = (
   episode: Episode,
   prefetch = true
 ): Promise<Response> => {
-  try {
-    const response = await cache.fetchCache(new URL(episode.url), {
-      maxAge: timer.DAY * 30,
-      name: `audio:${episode.id}`,
-      accept: [episode.type],
-      compress: false,
-      prefetch
-    });
-    return response;
-  } catch (err) {
-    log.error(err);
-    return new Response(null, {status: 404, statusText: 'Not Found'});
-  }
+  return cache.fetchCache(new URL(episode.url), {
+    maxAge: timer.DAY * 30,
+    name: `audio:${episode.id}`,
+    accept: [episode.type],
+    compress: false,
+    prefetch
+  });
 };
 
 export const fetchArtwork = async (
   podcast: Podcast,
   prefetch = true
 ): Promise<Response> => {
-  try {
-    const meta = await getPodcastMeta(podcast);
-    if (!meta) {
-      throw new Error('no podcast meta');
+  const controller = new AbortController();
+  const parser = xml.parse(podcast.url, {
+    signal: controller.signal
+  });
+  let image = '';
+  // Search feed for artwork
+  for await (const node of parser) {
+    if (!image && node.is('channel', 'image', 'url')) {
+      image = node.innerText.trim();
     }
-    if (!meta.feed.artwork) {
-      throw new Error('no artwork');
+    // Prefer itunes image
+    if (
+      node.is('channel', 'itunes:image') &&
+      Object.hasOwn(node.attributes, 'href')
+    ) {
+      image = node.attributes.href;
+      controller.abort();
+      break;
     }
-    const response = await cache.fetchCache(new URL(meta.feed.artwork), {
-      maxAge: timer.DAY,
-      name: `artwork:${podcast.id}`,
-      prefetch,
-      accept: [
-        'image/avif',
-        'image/webp;q=0.9',
-        'image/png;q=0.8',
-        'image/jpeg;q=0.7',
-        'image/jpg;q=0.7'
-      ]
-    });
-    return response;
-  } catch (err) {
-    log.error(`fetch artwork: ${err}`);
-    return new Response(null, {status: 404, statusText: 'Not Found'});
+    // Do not search past first item
+    if (node.is('item')) {
+      controller.abort();
+      break;
+    }
   }
+  return cache.fetchCache(new URL(image), {
+    maxAge: timer.DAY,
+    name: `artwork:${podcast.id}`,
+    prefetch,
+    accept: [
+      'image/avif',
+      'image/webp;q=0.9',
+      'image/png;q=0.8',
+      'image/jpeg;q=0.7',
+      'image/jpg;q=0.7'
+    ]
+  });
 };

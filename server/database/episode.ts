@@ -1,9 +1,9 @@
 import * as log from 'log';
 import * as uuid from 'uuid';
-import {BindValue} from 'sqlite3';
 import * as cache from '../cache/mod.ts';
 import {db, getBookmark, getPodcast, getMetadata} from './mod.ts';
-import {
+import type {BindValue} from 'sqlite3';
+import type {
   Episode,
   AddEpisode,
   GetEpisode,

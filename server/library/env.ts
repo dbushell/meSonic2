@@ -17,10 +17,7 @@ const expected = [
   'APP_PORT',
   'APP_HOSTNAME',
   'APP_LOG_LEVEL',
-  'APP_LOG_LOCALE',
-  'APP_PODCASTINDEX_USERAGENT',
-  'APP_PODCASTINDEX_APIKEY',
-  'APP_PODCASTINDEX_SECRET'
+  'APP_LOG_LOCALE'
 ];
 
 const emoji = '🌱';

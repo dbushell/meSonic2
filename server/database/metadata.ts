@@ -1,8 +1,8 @@
 import * as log from 'log';
 import * as uuid from 'uuid';
-import {BindValue} from 'sqlite3';
 import {db} from './mod.ts';
-import {
+import type {BindValue} from 'sqlite3';
+import type {
   Metadata,
   GetMetadata,
   AddMetadata,
