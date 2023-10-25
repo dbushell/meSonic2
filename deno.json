@@ -12,9 +12,9 @@
     "datetime": "https://deno.land/std@0.204.0/datetime/mod.ts",
     "media_types": "https://deno.land/std@0.204.0/media_types/mod.ts",
     "file_server": "https://deno.land/std@0.204.0/http/file_server.ts",
-    "queue": "https://raw.githubusercontent.com/dbushell/deno_queue/v0.1/mod.ts",
     "xml_streamify": "https://raw.githubusercontent.com/dbushell/xml-streamify/v0.1/mod.ts",
     "audio_duration": "https://deno.land/x/deno_audio_duration@v0.1.1/mod.ts",
+    "carriageway": "https://deno.land/x/carriageway@v0.8.0/mod.ts",
     "sqlite3": "https://deno.land/x/sqlite3@0.9.1/mod.ts"
   }
 }

@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as mediaTypes from 'media_types';
 import * as env from '../library/env.ts';
 import * as timer from '../library/timer.ts';
-import {Queue} from 'queue';
+import {Queue} from 'carriageway';
 import {encodeHex} from 'hex';
 import type {
   CacheMessage,
@@ -123,11 +123,11 @@ const handleCleanup = async () => {
 
 const handleClose = async () => {
   await Deno.writeTextFile(cacheMetaPath, JSON.stringify(cacheMeta, null, 2));
+  queue.clear();
   queue.getPending().forEach((item) => {
     log.warning(`Abort fetch (${item.url})`);
     item.controller.abort();
   });
-  queue.getQueued().forEach((item) => item.controller.abort());
   log.warning(`Close cache`);
   sendMessage({type: 'close'});
   self.close();

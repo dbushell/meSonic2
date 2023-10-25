@@ -4,7 +4,7 @@ import * as xml from 'xml_streamify';
 import * as timer from '../library/timer.ts';
 import * as cache from '../cache/mod.ts';
 import * as db from '../database/mod.ts';
-import {Queue} from 'queue';
+import {Queue} from 'carriageway';
 import type {Podcast, Episode, AddPodcast, AddEpisode} from '../types.ts';
 
 const queue = new Queue<Podcast, boolean>({
@@ -30,10 +30,14 @@ export const addPodcastByFeed = async (
         props.title = html.unescape(node.innerText.trim());
       }
       if (node.is('channel', 'lastBuildDate')) {
-        props.modified_at = new Date(node.innerText).toISOString();
+        props.modified_at = new Date(
+          html.unescape(node.innerText.trim())
+        ).toISOString();
       }
       if (node.is('channel', 'pubDate')) {
-        props.modified_at = new Date(node.innerText).toISOString();
+        props.modified_at = new Date(
+          html.unescape(node.innerText.trim())
+        ).toISOString();
       }
       if (props.title && props.modified_at) {
         controller.abort();
@@ -94,17 +98,18 @@ const syncCallback = async (podcast: Podcast): Promise<boolean> => {
         // Remove query string from url
         const url = new URL(enclosure.attributes.url);
         url.search = '';
+        const pubDate = html.unescape(
+          node.first('pubDate')?.innerText.trim() ?? ''
+        );
         const props: AddEpisode = {
           duration,
           parent_id: podcast.id,
           id: crypto.randomUUID(),
           url: url.href,
-          title: html.unescape(node.first('title')?.innerText?.trim() ?? ''),
+          title: html.unescape(node.first('title')?.innerText.trim() ?? ''),
           length: Number.parseInt(enclosure.attributes.length ?? '0'),
           type: enclosure.attributes.type ?? '',
-          modified_at: new Date(
-            node.first('pubDate')?.innerText.trim() || Date.now()
-          ).toISOString()
+          modified_at: new Date(pubDate || Date.now()).toISOString()
         };
         episodes.push(props);
         if (episodes.length >= 100) {
