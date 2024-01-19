@@ -1,5 +1,6 @@
 <script lang="ts">
   import {createEventDispatcher} from 'svelte';
+  import Button from './button.svelte';
   import Clockwise from './icons/clockwise.svelte';
 
   const dispatch = createEventDispatcher();
@@ -8,18 +9,17 @@
   export let isDisabled: boolean;
 </script>
 
-<button
-  disabled={isDisabled}
-  on:click={() => dispatch('click')}
+<Button
+  icon
   type="button"
-  aria-label="fast-foward 15 seconds"
-  class="btn btn-outline-primary text-nowrap"
+  disabled={isDisabled}
+  attr={{id: 'player-forward'}}
+  on:click={() => dispatch('click')}
 >
-  <Clockwise />
-  <span
-    aria-hidden="true"
-    class="fs-7 font-monospace position-absolute top-50 start-50 translate-middle"
-  >
-    {skip}
+  <Clockwise slot="icon" />
+  <span slot="label" aria-hidden="true">
+    <span class="hidden">fast-forward</span>
+    <span>{skip}</span>
+    <span class="hidden">seconds</span>
   </span>
-</button>
+</Button>

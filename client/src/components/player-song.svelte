@@ -11,29 +11,25 @@
   $: song = $playerStore as Song;
 </script>
 
-<p class="h6 lh-base m-0 me-auto">
+<p class="mb-0">
   {#if !isLoaded}
-    <span role="status" class="spinner-border spinner-border-sm me-1">
-      <span class="visually-hidden">Loading…</span>
-    </span>
+    <span class="hidden">Loading…</span>
   {/if}
-  {#if isOffline}<Wifioff />{:else if isDownload}<Floppy />{/if}
+  {#if isOffline}
+    <span class="inline-flex ai-center">
+      <Wifioff /></span
+    >{:else if isDownload}<span class="inline-flex ai-center"><Floppy /></span
+    >{/if}
   <span>{song.name}</span>
 </p>
-<div class="d-flex flex-wrap">
+<div class="small flex flex-wrap gap-xs">
   {#if song.artist}
-    <a
-      href={`/audiobooks/${song.artist_id}`}
-      class="text-body-secondary fs-7 me-2"
-    >
+    <a href={`/audiobooks/${song.artist_id}`}>
       {song.artist.name}
     </a>
   {/if}
   {#if song.album}
-    <a
-      href={`/audiobooks/${song.artist_id}/${song.album_id}`}
-      class="text-body-secondary fs-7 me-2"
-    >
+    <a href={`/audiobooks/${song.artist_id}/${song.album_id}`}>
       {song.album.name}
     </a>
   {/if}

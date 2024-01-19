@@ -1,16 +1,13 @@
 import * as log from 'log';
-import * as async from 'async';
 import * as db from '../database/mod.ts';
 import * as cache from '../cache/mod.ts';
 import * as server from './server.ts';
-import * as timer from './timer.ts';
 
-const unload = async.deferred<void>();
+const unload = Promise.withResolvers<void>();
 let activated = false;
 
 const beforeUnload = async () => {
   log.critical('💀 Shutdown activated');
-  timer.clearAllTimers();
   await cache.close();
   server.close();
   db.close();
@@ -26,7 +23,7 @@ export const now = async () => {
   if (activated) return;
   activated = true;
   beforeUnload();
-  await unload;
+  await unload.promise;
   Deno.exit();
 };
 

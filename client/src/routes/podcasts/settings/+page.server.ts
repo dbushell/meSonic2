@@ -27,7 +27,6 @@ export const actions: Actions = {
     try {
       const form = await event.request.formData();
       const feed = form.get('feed')?.toString() ?? '';
-      const testURL = new URL(feed);
       const url = new URL(`/api/podcast/add`, PUBLIC_API_URL);
       const response = await event.fetch(url, {
         method: 'POST',

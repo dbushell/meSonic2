@@ -34,46 +34,35 @@
   const iconed = (episode: Episode) => {
     return cached(episode) || playing(episode) || played(episode);
   };
-
-  const className = (episode: Episode) => {
-    if (player && player.id === episode.id) {
-      return 'text-primary';
-    } else if (played(episode)) {
-      return 'text-success';
-    }
-    return 'text-body-emphasis';
-  };
 </script>
 
-<h2 class="mb-3 fs-3">
-  <a href="/podcasts" class="text-warning text-decoration-none"
-    >{data.mainHeading}</a
-  >
+<h2>
+  <a href="/podcasts">{data.mainHeading}</a>
 </h2>
-<div class="list-group">
+<div class="List">
   {#if episodes.length === 0}
-    <div class="list-group-item text-body-secondary">No episodes found</div>
+    <p>No episodes found</p>
   {:else}
     {#each episodes as item (item.id)}
-      <button
-        on:click={() => onSong(item)}
-        type="button"
-        class="list-group-item list-group-item-action px-2 {className(item)}"
-      >
-        <div class="d-flex">
+      <button on:click={() => onSong(item)} type="button" class="Stack gap-xs">
+        <div class="flex gap-xs ai-center">
           <img
             alt={podcasts[0].title}
             src={new URL(`/artwork/${podcasts[0].id}`, PUBLIC_API_URL).href}
-            class="rounded overflow-hidden flex-shrink-0 me-2"
+            class="flex-shrink-0"
             width="40"
             height="40"
             loading="lazy"
           />
           <div class="flex-grow-1">
-            <div class="d-flex justify-content-between align-items-start">
-              <span class="lh-sm">
+            <div class="flex jc-between ai-start">
+              <span
+                class="p"
+                class:color-success={played(item)}
+                class:color-active={playing(item)}
+              >
                 {#if iconed(item)}
-                  <span class="align-middle d-inline-flex align-items-center">
+                  <span class="inline-flex ai-center">
                     {#if cached(item)}
                       <Lightning />
                     {/if}
@@ -87,31 +76,22 @@
                 <span>{item.title}</span>
               </span>
               {#if item.duration}
-                <span
-                  class="badge text-body-secondary bg-dark-subtle font-monospace ms-1"
-                >
+                <span class="color-subtle small monospace">
                   {formatTime(item.duration)}
                 </span>
               {/if}
             </div>
-            <time class="fs-7 text-body-secondary" datetime={item.modified_at}>
+            <time class="color-subtle small" datetime={item.modified_at}>
               {formatDate(new Date(item.modified_at))}
             </time>
           </div>
         </div>
         {#if item?.bookmarks?.length}
-          <div class="progress w-100 mt-2 mb-1" style="height: 0.125rem;">
-            <div
-              class="progress-bar bg-success"
-              role="progressbar"
-              style="width: {progress(item.bookmarks[0], item.duration)}%;"
-              aria-valuenow={Math.round(
-                progress(item.bookmarks[0], item.duration)
-              )}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
+          <progress
+            class="Progress"
+            value={Math.round(progress(item.bookmarks[0], item.duration))}
+            max="100"
+          ></progress>
         {/if}
       </button>
     {/each}

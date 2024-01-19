@@ -1,5 +1,4 @@
 import * as log from 'log';
-import * as async from 'async';
 import type {
   CacheMessage,
   CacheLog,
@@ -7,14 +6,16 @@ import type {
   CacheResponse,
   CacheMetaEntry,
   Podcast,
-  Episode
+  Episode,
+  Deferred
 } from '../types.ts';
 
-const fetchMap = new Map<string, async.Deferred<Response>>();
+const fetchMap = new Map<string, Deferred<Response>>();
 
-const workerMap = new Map<string, async.Deferred<unknown>>();
-workerMap.set('ready', async.deferred<boolean>());
-workerMap.set('closed', async.deferred<boolean>());
+// deno-lint-ignore no-explicit-any
+const workerMap = new Map<string, Deferred<any>>();
+workerMap.set('ready', Promise.withResolvers<boolean>());
+workerMap.set('closed', Promise.withResolvers<boolean>());
 
 const worker = new Worker(new URL('./worker.ts', import.meta.url), {
   type: 'module'
@@ -106,25 +107,25 @@ worker.addEventListener('error', (ev: Event) => {
 
 export const close = async () => {
   workerMessage({type: 'close'});
-  await workerMap.get('closed')!;
+  await workerMap.get('closed')!.promise;
   worker.terminate();
 };
 
 export const cleanup = (): Promise<boolean> => {
   if (!workerMap.has('cleanup')) {
-    workerMap.set('cleanup', async.deferred<boolean>());
+    workerMap.set('cleanup', Promise.withResolvers<boolean>());
     workerMessage({type: 'cleanup'});
   }
-  return workerMap.get('cleanup')! as Promise<boolean>;
+  return workerMap.get('cleanup')!.promise as Promise<boolean>;
 };
 
 export const check = (url: URL): Promise<CacheMetaEntry | null> => {
   const mapId = `check:${url.href}`;
   if (!workerMap.has(mapId)) {
-    workerMap.set(mapId, async.deferred<CacheMetaEntry | null>());
+    workerMap.set(mapId, Promise.withResolvers<CacheMetaEntry | null>());
     workerMessage({type: 'check', url: url.href});
   }
-  return workerMap.get(mapId)! as Promise<CacheMetaEntry | null>;
+  return workerMap.get(mapId)!.promise as Promise<CacheMetaEntry | null>;
 };
 
 export const fetchCache = async (
@@ -132,18 +133,18 @@ export const fetchCache = async (
   options: Partial<CacheOptions> = {}
 ): Promise<Response> => {
   if (fetchMap.has(url.href)) {
-    return fetchMap.get(url.href)!;
+    return fetchMap.get(url.href)!.promise;
   }
-  await workerMap.get('ready')!;
-  const promise = async.deferred<Response>();
-  fetchMap.set(url.href, promise);
+  await workerMap.get('ready')!.promise;
+  const deferred = Promise.withResolvers<Response>();
+  fetchMap.set(url.href, deferred);
 
   workerMessage({
     type: 'fetch',
     url: url.href,
     options
   });
-  return promise;
+  return deferred.promise;
 };
 
 addEventListener('podcast:remove', ((event: CustomEvent<Podcast>) => {

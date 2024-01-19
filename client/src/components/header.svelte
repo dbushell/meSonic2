@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from '$components/button.svelte';
   import Browse from './icons/browse.svelte';
   import Settings from './icons/settings.svelte';
   import Bookmarks from './icons/bookmarks.svelte';
@@ -11,70 +12,66 @@
   export let isSettings: boolean;
 </script>
 
-<header class="navbar border-bottom pb-0">
-  <nav class="container-fluid align-items-end">
-    <h1 class="navbar-brand py-1 mb-1 me-1">
-      <a
-        class="d-flex align-items-center text-decoration-none text-primary"
-        href="/"
-      >
-        <div class="me-1">
-          <img
-            src="/favicon.svg"
-            role="presentation"
-            alt="{app}"
-            width="30"
-            height="30"
-          />
-        </div>
-        <span>{app}</span>
-      </a>
-    </h1>
-    <ul class="nav nav-tabs justify-content-end">
-      <li class="nav-item">
-        <a
+<header class="Grid | Header">
+  <div class="Header__main">
+    <a class="Header__logo | flex gap-2xs ai-center" href="/">
+      <img
+        class="flex-shrink-0"
+        src="/logo.svg"
+        role="presentation"
+        alt={app}
+        width="30"
+        height="30"
+      />
+      <span>{app}</span>
+    </a>
+    <div class="Header__tabs">
+      <div class="Button-tabs">
+        <Button
+          icon
+          small
+          label="Podcasts"
           href="/podcasts"
-          class="nav-link"
-          class:active={isPodcasts}
-          aria-current={isPodcasts ? 'page' : 'false'}
+          attr={{
+            'aria-current': isPodcasts ? 'page' : 'false'
+          }}
         >
-          <Browse />
-          <span class="visually-hidden">Podcasts</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a
+          <Browse slot="icon" />
+        </Button>
+        <Button
+          icon
+          small
+          label="Three"
           href="/audiobooks"
-          class="nav-link"
-          class:active={isMedia}
-          aria-current={isMedia ? 'page' : 'false'}
+          attr={{
+            'aria-current': isMedia ? 'page' : 'false'
+          }}
         >
-          <Cassette />
-          <span class="visually-hidden">Media</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a
+          <Cassette slot="icon" />
+        </Button>
+        <Button
+          icon
+          small
+          label="Three"
           href="/bookmarks"
-          class="nav-link"
-          class:active={isBookmarks}
-          aria-current={isBookmarks ? 'page' : 'false'}
+          attr={{
+            'aria-current': isBookmarks ? 'page' : 'false'
+          }}
         >
-          <Bookmarks />
-          <span class="visually-hidden">Bookmarks</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a
+          <Bookmarks slot="icon" />
+        </Button>
+        <Button
+          icon
+          small
+          label="Three"
           href="/settings"
-          class="nav-link"
-          class:active={isSettings}
-          aria-current={isSettings ? 'page' : 'false'}
+          attr={{
+            'aria-current': isSettings ? 'page' : 'false'
+          }}
         >
-          <Settings />
-          <span class="visually-hidden">Settings</span>
-        </a>
-      </li>
-    </ul>
-  </nav>
+          <Settings slot="icon" />
+        </Button>
+      </div>
+    </div>
+  </div>
 </header>

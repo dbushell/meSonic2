@@ -9,17 +9,11 @@ import type {
   RemoveBookmark,
   UnplayedBookmark
 } from '../types.ts';
+import type {Handle} from 'velocirouter';
+
+type Handler = Handle<Deno.ServeHandlerInfo>;
 
 export {sveltekit} from './sveltekit.ts';
-
-export const bookmarkPattern = new URLPattern({pathname: '/api/bookmark/:id'});
-export const podcastPattern = new URLPattern({pathname: '/api/podcast/:id'});
-export const episodePattern = new URLPattern({pathname: '/api/episode/:id'});
-export const artworkPattern = new URLPattern({pathname: '/artwork/:id'});
-export const audioPattern = new URLPattern({pathname: '/audio/:id'});
-export const artistPattern = new URLPattern({pathname: '/api/artist/:id'});
-export const albumPattern = new URLPattern({pathname: '/api/album/:id'});
-export const songPattern = new URLPattern({pathname: '/api/song/:id'});
 
 export const getHeaders = (request?: Request): Headers => {
   // TODO: const ip = request.headers.get('x-forwarded-for') ?? '';
@@ -43,11 +37,9 @@ export const error404 = (request: Request) =>
     headers: getHeaders(request)
   });
 
-export const bookmark = async (
-  url: URL,
-  request: Request
-): Promise<Response> => {
-  const id = bookmarkPattern.exec(url)?.pathname.groups.id;
+export const bookmark: Handler = async (request, _r, {match}) => {
+  const url = new URL(request.url);
+  const {id} = match.pathname.groups;
   const songs = url.searchParams.get('songs') === 'true';
   const albums = url.searchParams.get('albums') === 'true';
   const artists = url.searchParams.get('artists') === 'true';
@@ -110,11 +102,9 @@ export const bookmark = async (
   });
 };
 
-export const podcast = async (
-  url: URL,
-  request: Request
-): Promise<Response> => {
-  const id = podcastPattern.exec(url)?.pathname.groups.id;
+export const podcast: Handler = async (request, _r, {match}) => {
+  const url = new URL(request.url);
+  const {id} = match.pathname.groups;
   const episodes = url.searchParams.get('episodes') === 'true';
   const bookmarks = url.searchParams.get('bookmarks') === 'true';
   const metadata = url.searchParams.get('metadata') === 'true';
@@ -158,11 +148,9 @@ export const podcast = async (
   return error404(request);
 };
 
-export const episode = async (
-  url: URL,
-  request: Request
-): Promise<Response> => {
-  const id = episodePattern.exec(url)?.pathname.groups.id;
+export const episode: Handler = async (request, _r, {match}) => {
+  const url = new URL(request.url);
+  const {id} = match.pathname.groups;
   const podcasts = url.searchParams.get('podcasts') === 'true';
   const bookmarks = url.searchParams.get('bookmarks') === 'true';
   const metadata = url.searchParams.get('metadata') === 'true';
@@ -178,12 +166,9 @@ export const episode = async (
   return error404(request);
 };
 
-export const artwork = async (
-  url: URL,
-  request: Request
-): Promise<Response> => {
+export const artwork: Handler = async (request, _r, {match}) => {
+  const {id} = match.pathname.groups;
   try {
-    const id = artworkPattern.exec(url)?.pathname.groups.id;
     if (!id) throw new Error();
     const podcast = db.getPodcast({id});
     if (!podcast.length) throw new Error();
@@ -197,9 +182,10 @@ export const artwork = async (
   }
 };
 
-export const audio = async (url: URL, request: Request): Promise<Response> => {
+export const audio: Handler = async (request, _r, {match}) => {
+  const url = new URL(request.url);
+  const {id} = match.pathname.groups;
   try {
-    const id = audioPattern.exec(url)?.pathname.groups.id;
     if (!id) throw new Error();
     const type = url.searchParams.get('type');
     if (type === 'episode') {
@@ -246,8 +232,9 @@ export const handleCache = async (
   return response;
 };
 
-export const artist = (url: URL, request: Request): Response => {
-  const id = artistPattern.exec(url)?.pathname.groups.id;
+export const artist: Handler = (request, _r, {match}) => {
+  const url = new URL(request.url);
+  const {id} = match.pathname.groups;
   const albums = url.searchParams.get('albums') === 'true';
   const songs = url.searchParams.get('songs') === 'true';
   const headers = getHeaders(request);
@@ -268,8 +255,9 @@ export const artist = (url: URL, request: Request): Response => {
   return error404(request);
 };
 
-export const album = (url: URL, request: Request): Response => {
-  const id = albumPattern.exec(url)?.pathname.groups.id;
+export const album: Handler = (request, _r, {match}) => {
+  const url = new URL(request.url);
+  const {id} = match.pathname.groups;
   const bookmarks = url.searchParams.get('bookmarks') === 'true';
   const artists = url.searchParams.get('artists') === 'true';
   const songs = url.searchParams.get('songs') === 'true';
@@ -291,8 +279,9 @@ export const album = (url: URL, request: Request): Response => {
   return error404(request);
 };
 
-export const song = (url: URL, request: Request): Response => {
-  const id = songPattern.exec(url)?.pathname.groups.id;
+export const song: Handler = (request, _r, {match}) => {
+  const url = new URL(request.url);
+  const {id} = match.pathname.groups;
   const bookmarks = url.searchParams.get('bookmarks') === 'true';
   const artists = url.searchParams.get('artists') === 'true';
   const albums = url.searchParams.get('albums') === 'true';

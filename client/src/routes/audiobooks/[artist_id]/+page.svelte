@@ -11,45 +11,35 @@
 
   $: player = $playerStore as Song;
 
-  const className = (album: Album) => {
-    if (player && player.album_id === album.id) {
-      return 'text-primary';
-    }
-    return 'text-body-emphasis';
+  const playing = (album: Album) => {
+    return player && player.album_id === album.id;
   };
 </script>
 
-<h2 class="mb-3 fs-3">
-  <a href="/audiobooks" class="text-warning text-decoration-none"
-    >{data.heading}</a
-  >
+<h2>
+  <a href="/audiobooks">{data.heading}</a>
 </h2>
-<div class="list-group">
-  <a
-    href="/audiobooks"
-    class="list-group-item list-group-item-action d-flex justify-content-between align-items-start pe-2"
-  >
-    <span class="lh-sm text-body-secondary">Return</span>
+<div class="List">
+  <a href="/audiobooks" class="flex gap-xs jc-between ai-start">
+    <span class="p color-subtle">Return</span>
   </a>
   {#if artists.length === 0 || albums.length === 0}
-    <div class="list-group-item text-danger">No albums found</div>
+    <p class="p">No albums found</p>
   {:else}
     {#each albums as item (item.id)}
       <a
         href="/audiobooks/{item.artist_id}/{item.id}"
-        class="list-group-item list-group-item-action d-flex justify-content-between align-items-start pe-2 {className(
-          item
-        )}"
+        class="flex gap-xs jc-between ai-start"
       >
-        <span class="lh-sm">
+        <span class="p" class:color-active={playing(item)}>
           {#if player && player.album_id === item.id}
-            <Headphones />
+            <span class="inline-flex ai-center">
+              <Headphones />
+            </span>
           {/if}
           {item.name}
         </span>
-        <span
-          class="badge text-body-secondary bg-dark-subtle font-monospace ms-1"
-        >
+        <span class="color-subtle small monospace">
           {item.song_count}
         </span>
       </a>

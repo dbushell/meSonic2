@@ -1,5 +1,6 @@
 <script lang="ts">
   import {createEventDispatcher} from 'svelte';
+  import Button from './button.svelte';
   import Play from './icons/play.svelte';
 
   const dispatch = createEventDispatcher();
@@ -7,12 +8,13 @@
   export let isDisabled: boolean;
 </script>
 
-<button
-  disabled={isDisabled}
-  on:click={() => dispatch('click')}
+<Button
+  icon
   type="button"
-  aria-label="play"
-  class="btn btn-outline-primary"
+  label="Play"
+  disabled={isDisabled}
+  attr={{id: 'player-play'}}
+  on:click={() => dispatch('click')}
 >
-  <Play />
-</button>
+  <Play slot="icon" />
+</Button>

@@ -1,6 +1,7 @@
 import * as log from 'log';
 import * as env from './env.ts';
 import * as handle from './handle.ts';
+import {Router} from 'velocirouter';
 
 const emoji = '🚀';
 
@@ -20,6 +21,23 @@ export const close = () => {
   }
 };
 
+const router = new Router<Deno.ServeHandlerInfo>({
+  onNoMatch: () => {
+    return new Response(null, {status: 400});
+  }
+});
+
+router.get({pathname: '/api/artist/:id'}, handle.artist);
+router.get({pathname: '/api/album/:id'}, handle.album);
+router.get({pathname: '/api/song/:id'}, handle.song);
+router.get({pathname: '/api/episode/:id'}, handle.episode);
+router.get({pathname: '/api/podcast/:id'}, handle.podcast);
+router.post({pathname: '/api/podcast/:id'}, handle.podcast);
+router.get({pathname: '/api/bookmark/:id'}, handle.bookmark);
+router.post({pathname: '/api/bookmark/:id'}, handle.bookmark);
+router.get({pathname: '/artwork/:id'}, handle.artwork);
+router.get({pathname: '/audio/:id'}, handle.audio);
+
 export const serve = (options: ServeOptions) => {
   if (controller) {
     controller.abort();
@@ -30,34 +48,14 @@ export const serve = (options: ServeOptions) => {
 
   log.info(`${emoji} Listening: http://${hostname}:${port}`);
 
-  const handler = (
+  const handler = async (
     request: Request,
     info: Deno.ServeHandlerInfo
-  ): Response | Promise<Response> => {
+  ): Promise<Response> => {
     const url = new URL(request.url);
-    if (handle.artistPattern.test(url)) {
-      return handle.artist(url, request);
-    }
-    if (handle.albumPattern.test(url)) {
-      return handle.album(url, request);
-    }
-    if (handle.songPattern.test(url)) {
-      return handle.song(url, request);
-    }
-    if (handle.podcastPattern.test(url)) {
-      return handle.podcast(url, request);
-    }
-    if (handle.episodePattern.test(url)) {
-      return handle.episode(url, request);
-    }
-    if (handle.bookmarkPattern.test(url)) {
-      return handle.bookmark(url, request);
-    }
-    if (handle.artworkPattern.test(url)) {
-      return handle.artwork(url, request);
-    }
-    if (handle.audioPattern.test(url)) {
-      return handle.audio(url, request);
+    const response = await router.handle(request, info);
+    if (response.ok || response.status !== 400) {
+      return response;
     }
     if (env.dev()) {
       const viteURL = new URL(

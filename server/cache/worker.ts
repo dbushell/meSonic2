@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as mediaTypes from 'media_types';
 import * as env from '../library/env.ts';
-import * as timer from '../library/timer.ts';
 import {Queue} from 'carriageway';
 import {encodeHex} from 'hex';
 import type {
@@ -15,6 +14,12 @@ import type {
   CacheResponse
 } from '../types.ts';
 import {log} from './log.ts';
+
+const SECOND = 1e3;
+const MINUTE = SECOND * 60;
+const HOUR = MINUTE * 60;
+const DAY = HOUR * 24;
+const WEEK = DAY * 7;
 
 const cacheDir = path.join(env.get('DATA_DIR'), 'cache');
 
@@ -96,7 +101,7 @@ const handleCleanup = async () => {
         throw new Error('unknown');
       }
       const age = Date.now() - new Date(entry.created).getTime();
-      if (age > timer.WEEK * 8) {
+      if (age > WEEK * 8) {
         await Deno.remove(cachePath);
         throw new Error('outdated');
       }
@@ -161,7 +166,7 @@ const handleFetch = async (
     path: cachePath,
     options: {
       compress: options.compress ?? true,
-      maxAge: options.maxAge ?? timer.HOUR,
+      maxAge: options.maxAge ?? HOUR,
       accept: options.accept ?? ['application/json'],
       prefetch: options.prefetch ?? false
     } as CacheOptions,
@@ -207,7 +212,7 @@ export const fetchFromCache = (item: CacheItem): boolean => {
     return false;
   }
   const age = Date.now() - new Date(cached.created).getTime();
-  if (age > options.maxAge || age > timer.DAY * 60) {
+  if (age > options.maxAge || age > DAY * 60) {
     delete cacheMeta[url];
     return false;
   }

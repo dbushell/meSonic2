@@ -4,9 +4,9 @@
   import {PUBLIC_APP_URL} from '$env/static/public';
   import {page} from '$app/stores';
   import {playStore, playerStore} from '$lib/stores';
-  import Player from '../components/player.svelte';
-  import Header from '../components/header.svelte';
-  import Footer from '../components/footer.svelte';
+  import Player from '$components/player.svelte';
+  import Header from '$components/header.svelte';
+  import Footer from '$components/footer.svelte';
 
   export let data: LayoutData;
 
@@ -52,9 +52,14 @@
   <title>{title}</title>
   <link rel="canonical" href={url.href} />
 </svelte:head>
-<Header app={data.app} {isMedia} {isPodcasts} {isBookmarks} {isSettings} />
-<Player />
-<main class="container-fluid mb-5">
-  <slot />
-</main>
-<Footer app={data.app} />
+
+<div class="App">
+  <Header app={data.app} {isMedia} {isPodcasts} {isBookmarks} {isSettings} />
+  <Player />
+  <main class="Grid | Container">
+    <div class="Stack">
+      <slot />
+    </div>
+  </main>
+  <Footer app={data.app} />
+</div>

@@ -13,62 +13,49 @@
 
   $: episode = $playerStore as Episode;
 
-  const className = (podcast: Podcast) => {
-    if (episode && episode.parent_id === podcast.id) {
-      return 'text-primary';
-    }
-    return 'text-body-emphasis';
+  const playing = (podcast: Podcast) => {
+    return episode && episode.parent_id === podcast.id;
   };
 </script>
 
-<h2 class="mb-3 fs-3 d-flex justify-content-between align-items-baseline">
-  <a href="/podcasts" class="text-warning text-decoration-none"
-    >{data.heading}</a
-  >
-  <a
-    href="/podcasts/settings"
-    class="fs-6 text-body-emphasis text-decoration-none me-3"
-  >
-    <span class="fw-light me-2 text-body-secondary">settings</span>
+<h2 class="flex jc-between ai-baseline">
+  <a href="/podcasts">{data.heading}</a>
+  <a class="p flex gap-xs ai-center" href="/podcasts/settings">
+    <span>settings</span>
     <Settings />
   </a>
 </h2>
-<div class="list-group">
+<div class="List">
   {#if podcasts.length === 0}
-    <div class="list-group-item">
-      <a href="/podcasts/settings">No podcast feeds add one in settings</a>
-    </div>
+    <a class="p" href="/podcasts/settings">
+      <span>No podcast feeds add one in settings</span>
+    </a>
   {:else}
     {#each podcasts as item (item.id)}
-      <a
-        href="/podcasts/{item.id}"
-        class="list-group-item list-group-item-action px-2 d-flex {className(
-          item
-        )}"
-      >
+      <a href="/podcasts/{item.id}" class="flex gap-xs ai-center">
         <img
           alt={item.title}
           src={new URL(`/artwork/${item.id}`, PUBLIC_API_URL).href}
-          class="rounded overflow-hidden flex-shrink-0 me-2"
+          class="flex-shrink-0"
           width="40"
           height="40"
           loading="lazy"
         />
         <div class="flex-grow-1">
-          <div class="d-flex justify-content-between align-items-start">
-            <span class="lh-sm">
+          <div class="flex jc-between ai-start">
+            <span class="p" class:color-active={playing(item)}>
               {#if episode && episode.parent_id === item.id}
-                <Headphones />
+                <span class="inline-flex ai-center">
+                  <Headphones />
+                </span>
               {/if}
               {item.title}
             </span>
-            <span
-              class="badge text-body-secondary bg-dark-subtle font-monospace ms-1"
-            >
+            <span class="color-subtle small monospace">
               {item.episode_count}
             </span>
           </div>
-          <time class="fs-7 text-body-secondary" datetime={item.modified_at}>
+          <time class="color-subtle small" datetime={item.modified_at}>
             {formatDate(new Date(item.modified_at))}
           </time>
         </div>

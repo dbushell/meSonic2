@@ -1,5 +1,5 @@
-import {vitePreprocess} from '@sveltejs/kit/vite';
 import adapter from 'sveltekit-adapter-deno';
+import {vitePreprocess} from '@sveltejs/vite-plugin-svelte';
 
 let directives = {};
 if (process.env.NODE_ENV === 'production') {

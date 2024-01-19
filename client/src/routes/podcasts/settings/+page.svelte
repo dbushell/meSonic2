@@ -4,6 +4,7 @@
   import {PUBLIC_API_URL} from '$env/static/public';
   import {invalidate} from '$app/navigation';
   import {enhance} from '$app/forms';
+  import Button from '$components/button.svelte';
 
   export let data: PageData;
   export let form: ActionData;
@@ -26,7 +27,7 @@
   };
 
   const removeEnhance: SubmitFunction = (submit) => {
-    isRemoving = submit.data.get('id')?.toString() ?? '';
+    isRemoving = submit.formData.get('id')?.toString() ?? '';
     return async ({update}) => {
       await update();
       isRemoving = '';
@@ -34,79 +35,66 @@
   };
 </script>
 
-<h2 class="mb-3 fs-3">
-  <a href="/podcasts" class="text-warning text-decoration-none"
-    >{data.heading}</a
-  >
+<h2>
+  <a href="/podcasts">{data.heading}</a>
 </h2>
 
-<div class="list-group">
+<div class="List">
   {#if form?.success}
-    <div class="list-group-item text-success">{form.success}</div>
+    <div><p><strong>{form.success}</strong></p></div>
   {/if}
   {#if form?.error}
-    <div class="list-group-item text-danger">{form.error}</div>
+    <div><p><strong>{form.error}</strong></p></div>
   {/if}
   <form
-    class="list-group-item py-3"
+    class="Stack gap-xs"
     method="POST"
     action="/podcasts/settings?/add"
     use:enhance={addEnhance}
   >
-    <label for="feed" class="form-label text-body-emphasis">Add Feed URL:</label
-    >
-    <div class="mb-3 d-flex">
+    <label for="feed" class="p">Add Feed URL:</label>
+    <div class="flex gap-xs">
       <input
         type="url"
-        class="form-control me-2"
+        class="Field flex-grow-1"
         autocomplete="off"
         name="feed"
         id="feed"
         required
         disabled={isAdding}
       />
-      <button
+      <Button
         type="submit"
-        class="btn btn-outline-success text-nowrap"
+        label="Add New"
+        classes={['flex-shrink-0']}
         disabled={isAdding}
-      >
-        Add New
-        {#if isAdding}
-          <span role="status" class="spinner-border spinner-border-sm ms-1" />
-        {/if}
-      </button>
+      />
     </div>
   </form>
   {#each podcasts as item (item.id)}
     <form
-      class="list-group-item py-3"
+      class="Stack gap-xs"
       method="POST"
       action="/podcasts/settings?/remove"
       use:enhance={removeEnhance}
     >
       <input type="hidden" name="id" value={item.id} />
-      <label for="{item.id}-url" class="form-label text-body-emphasis"
-        >{item.title}:</label
-      >
-      <div class="d-flex">
+      <label for="{item.id}-url" class="small">{item.title}:</label>
+      <div class="flex gap-xs">
         <input
           type="url"
-          class="form-control form-control-sm me-2"
+          class="Field flex-grow-1"
           id="{item.id}-url"
           value={item.url}
           readonly
           required
         />
-        <button
+        <Button
           type="submit"
-          class="btn btn-sm btn-outline-danger text-nowrap"
+          label="Remove"
+          classes={['flex-shrink-0']}
           disabled={item.id === isRemoving}
-        >
-          Remove
-          {#if item.id === isRemoving}
-            <span role="status" class="spinner-border spinner-border-sm ms-1" />
-          {/if}
-        </button>
+        />
       </div>
     </form>
   {/each}

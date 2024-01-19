@@ -1,5 +1,6 @@
 <script lang="ts">
   import {createEventDispatcher} from 'svelte';
+  import Button from './button.svelte';
   import Pause from './icons/pause.svelte';
 
   const dispatch = createEventDispatcher();
@@ -7,12 +8,13 @@
   export let isDisabled: boolean;
 </script>
 
-<button
-  disabled={isDisabled}
-  on:click={() => dispatch('click')}
+<Button
+  icon
   type="button"
-  aria-label="pause"
-  class="btn btn-outline-primary"
+  label="Pause"
+  disabled={isDisabled}
+  attr={{id: 'player-pause'}}
+  on:click={() => dispatch('click')}
 >
-  <Pause />
-</button>
+  <Pause slot="icon" />
+</Button>

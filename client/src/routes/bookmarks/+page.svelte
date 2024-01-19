@@ -18,6 +18,7 @@
   } from '$lib/stores';
   import {formatTime, progress} from '$lib/utils';
   import {addOffline, removeOffline} from '$lib/offline';
+  import Button from '$components/button.svelte';
   import BookmarkX from '$components/icons/bookmark-x.svelte';
   import Backspace from '$components/icons/backspace.svelte';
   import Download from '$components/icons/download.svelte';
@@ -98,40 +99,37 @@
   };
 </script>
 
-<h2 class="text-warning mb-3 fs-3">{data.heading}</h2>
-<div class="list-group">
+<h2>{data.heading}</h2>
+<div class="List">
   {#if bookmarks.length === 0}
-    <div class="list-group-item text-body-secondary">No bookmarks found</div>
+    <p class="p">No bookmarks found</p>
   {:else}
     {#each bookmarks as item (item.id)}
-      <article
-        id="bookmark-{item.id}"
-        class="list-group-item d-flex flex-wrap justify-content-between align-items-center"
-      >
-        <h3 class="mt-1 mb-0 h6 lh-base">
+      <article id="bookmark-{item.id}" class="Stack gap-xs">
+        <h3 class="p">
           {#if item.parent_type === 'song'}
             {parentSong(item).name}
           {/if}
           {#if item.parent_type === 'episode'}
-            <img
-              alt={parentPodcast(item).title}
-              src={new URL(`/artwork/${parentPodcast(item).id}`, PUBLIC_API_URL)
-                .href}
-              class="d-inline-block align-top rounded overflow-hidden me-1"
-              width="24"
-              height="24"
-              loading="lazy"
-            />
+            <div class="inline-flex ai-center va-middle">
+              <img
+                alt={parentPodcast(item).title}
+                src={new URL(
+                  `/artwork/${parentPodcast(item).id}`,
+                  PUBLIC_API_URL
+                ).href}
+                class="flex-shrink-0"
+                width="24"
+                height="24"
+                loading="lazy"
+              />
+            </div>
             <span>{parentEpisode(item).title}</span>
           {/if}
         </h3>
-        <div
-          class="w-100 d-flex flex-wrap justify-content-between align-items-center"
-        >
-          <p class="mb-0 my-1 w-75 d-flex flex-wrap align-items-center">
-            <span
-              class="badge text-body-secondary bg-dark-subtle font-monospace me-2"
-            >
+        <div class="flex flex-wrap jc-between gap-xs ai-center">
+          <div class="small flex flex-wrap gap-xs ai-baseline">
+            <span class="monospace color-subtle">
               {formatTime(item.position / 1000)}
             </span>
             {#if item.parent_type === 'song'}
@@ -139,117 +137,106 @@
                 href={`/audiobooks/${parentArtist(item).id}/${
                   parentAlbum(item).id
                 }`}
-                class="text-body-secondary fs-7"
               >
                 {parentAlbum(item).name}
               </a>
             {/if}
             {#if item.parent_type === 'episode'}
-              <a
-                href={`/podcasts/${parentPodcast(item).id}`}
-                class="text-body-secondary fs-7"
-              >
+              <a href={`/podcasts/${parentPodcast(item).id}`}>
                 {parentPodcast(item).title}
               </a>
             {/if}
-          </p>
-          <div class="d-flex mt-2 mb-1">
+          </div>
+          <div class="flex flex-wrap gap-2xs ai-center">
             {#if $offlineStore.cached.includes(item.parent_id)}
-              <button
-                on:click={() => onRemoveOffline(item)}
-                class="btn btn-sm btn-outline-secondary"
-                aria-label="remove offline download"
+              <Button
+                icon
+                small
                 type="button"
+                label="remove offline download"
+                on:click={() => onRemoveOffline(item)}
               >
-                <Trash />
-              </button>
+                <Trash slot="icon" />
+              </Button>
             {:else}
-              <button
-                on:click={(ev) => onAddOffline(ev, item)}
+              <Button
+                icon
+                small
+                type="button"
+                label="download for offline play"
                 disabled={$settingStore.offline ||
                   Object.keys($offlineStore.downloads).includes(item.parent_id)}
-                class="btn btn-sm btn-outline-secondary"
-                aria-label="download for offline play"
-                type="button"
+                on:click={(ev) => onAddOffline(ev, item)}
               >
-                <Download />
-              </button>
+                <Download slot="icon" />
+              </Button>
             {/if}
-            <div
-              class="ms-2 btn-group"
-              aria-label="bookmark actions"
-              role="group"
-            >
-              <button
+            <div class="Button-group mb-0">
+              <Button
+                icon
+                small
+                type="button"
+                label="mark as unplayed"
+                classes={['Button--warn']}
                 on:click={() => onUnplayed(item)}
-                class="btn btn-sm btn-outline-danger"
-                aria-label="mark as unplayed"
-                type="button"
               >
-                <Backspace />
-              </button>
-              <button
+                <Backspace slot="icon" />
+              </Button>
+              <Button
+                icon
+                small
+                type="button"
+                label="remove bookmark"
+                classes={['Button--warn']}
                 on:click={() => onRemove(item)}
-                class="btn btn-sm btn-outline-danger"
-                aria-label="remove bookmark"
-                type="button"
               >
-                <BookmarkX />
-              </button>
+                <BookmarkX slot="icon" />
+              </Button>
             </div>
-            <button
-              on:click={() => onSong(item)}
-              class="btn ms-2 btn-sm btn-outline-success"
-              aria-label="resume playback"
+            <Button
+              icon
+              small
               type="button"
+              label="resume playback"
+              on:click={() => onSong(item)}
             >
-              <Play />
-            </button>
+              <Play slot="icon" />
+            </Button>
           </div>
         </div>
         {#if Object.keys($offlineStore.downloads).includes(item.parent_id)}
-          <div class="progress w-100 my-2" style="height: 0.125rem;">
-            <div
-              class="progress-bar bg-info"
-              role="progressbar"
-              style="width: {$offlineStore.downloads[item.parent_id]
-                .progress}%;"
-              aria-valuenow={Math.round(
-                $offlineStore.downloads[item.parent_id].progress
-              )}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
+          <progress
+            class="Progress"
+            value={Math.round($offlineStore.downloads[item.parent_id].progress)}
+            max="100"
+          ></progress>
         {/if}
-        <div class="progress w-100 my-2" style="height: 0.125rem;">
-          <div
-            class="progress-bar bg-success"
-            role="progressbar"
-            style="width: {progress(item)}%;"
-            aria-valuenow={Math.round(progress(item))}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          />
-        </div>
+        <progress class="Progress" value={Math.round(progress(item))} max="100"
+        ></progress>
       </article>
     {/each}
   {/if}
 </div>
 
-<div class="mt-4 d-flex justify-content-center gap-3">
-  <p class="fs-7">
-    <Backspace />
-    <span class="ms-1">Unplayed + Remove</span>
-  </p>
-  <p class="fs-7">
-    <BookmarkX />
-    <span class="ms-1">Remove Bookmark</span>
-  </p>
+<div class="flex ai-center jc-center gap-s">
+  <div class="small flex ai-center gap-2xs">
+    <span class="inline-flex ai-center">
+      <Backspace />
+    </span>
+    <span>Unplayed + Remove</span>
+  </div>
+  <div class="small flex ai-center gap-2xs">
+    <span class="inline-flex ai-center">
+      <BookmarkX />
+    </span>
+    <span>Remove Bookmark</span>
+  </div>
 </div>
 
 {#if $offlineStore.quota}
-  <div class="mt-4 d-flex justify-content-center gap-3">
-    <p class="fs-7">{formatBytes($offlineStore.usage)} / {formatBytes($offlineStore.quota)}</p>
+  <div class="flex ai-center jc-center gap-s">
+    <div class="small color-subtle">
+      {formatBytes($offlineStore.usage)} / {formatBytes($offlineStore.quota)}
+    </div>
   </div>
 {/if}

@@ -306,3 +306,5 @@ export interface CacheMetaEntry {
   compressed: boolean;
   contentType: string;
 }
+
+export type Deferred<T> = ReturnType<typeof Promise.withResolvers<T>>;

@@ -235,73 +235,60 @@
 </script>
 
 <svelte:window on:beforeunload|capture={onBeforeUnload} />
-<aside
-  class="container-fluid mt-0 mb-3 py-3 bg-body border-bottom position-sticky top-0"
->
-  <div class="d-flex flex-wrap align-items-center mb-1">
+<aside id="player" class="Grid | Container Container--light">
+  <div class="Stack gap-s">
     {#if play}
-      {#if play.id === player?.id}
-        <h2 class="visually-hidden">Audio Player</h2>
-        {#if play.type === 'song'}
-          <PlayerSong {isLoaded} {isOffline} {isDownload} />
-        {:else if play.type === 'episode'}
-          <PlayerEpisode {isLoaded} {isOffline} {isDownload} />
+      <div class="flex flex-wrap gap-xs ai-center jc-between">
+        {#if play.id === player?.id}
+          <h2 class="hidden">Audio Player</h2>
+          {#if play.type === 'song'}
+            <PlayerSong {isLoaded} {isOffline} {isDownload} />
+          {:else if play.type === 'episode'}
+            <PlayerEpisode {isLoaded} {isOffline} {isDownload} />
+          {/if}
+        {:else}
+          <p>
+            <span>Loading...</span>
+          </p>
         {/if}
-      {:else}
-        <p class="h6 lh-base m-0 me-auto">
-          <span role="status" class="spinner-border spinner-border-sm me-1" />
-          <span>Loading...</span>
-        </p>
-      {/if}
-    {/if}
-  </div>
-  <div
-    class="position-relative mb-2"
-    style="--range-value: {rangeValue}; --range-max: {rangeMax};"
-  >
-    <input
-      type="range"
-      class="form-range d-block"
-      aria-label="progress"
-      bind:value={rangeValue}
-      on:change={onRangeChange}
-      on:input={onRangeInput}
-      disabled={!isLoaded}
-      max={rangeMax}
-      min={0}
-    />
-    {#if isSeeking}
-      <div
-        role="tooltip"
-        class="popover bs-popover-top bg-dark-subtle border-dark-subtle pe-none position-absolute bottom-100"
-        style="--offset: calc((100% - 1em) / var(--range-max) * var(--range-value)); top: auto; left: var(--offset); transform: translateX(calc(-50% + 0.5em));"
-      >
-        <div
-          class="popover-arrow border-dark-subtle position-absolute top-100 start-50 translate-middle-x"
-        />
-        <div class="popover-body text-light font-monospace fs-7 p-1 px-2">
-          {rangeNow}
-        </div>
       </div>
     {/if}
-    <Atom {isPlaying} />
-    <Atom {isPlaying} />
-  </div>
-  <div
-    aria-hidden={!isLoaded}
-    class="d-flex justify-content-between align-items-center player-toolbar"
-  >
-    <p class="text-body-secondary m-0 order-1">
-      <span class="visually-hidden">Current time</span>
-      <span class="fs-7 fw-light font-monospace">{rangeStart}</span>
-    </p>
-    <p class="text-body-secondary text-end m-0 order-3">
-      <span class="visually-hidden">Duration</span>
-      <span class="fs-7 fw-light font-monospace">-{rangeEnd}</span>
-    </p>
-    <div class="btn-toolbar justify-content-center order-2">
+    <div style:--range-value={rangeValue} style:--range-max={rangeMax}>
+      <progress class="Progress" value={rangeValue} max={rangeMax}></progress>
+      <input
+        type="range"
+        class="Range"
+        aria-label="progress"
+        bind:value={rangeValue}
+        on:change={onRangeChange}
+        on:input={onRangeInput}
+        disabled={!isLoaded}
+        max={rangeMax}
+        min={0}
+      />
+      {#if isSeeking}
+        <div
+          role="tooltip"
+          style:--range-value={rangeValue}
+          style:--range-max={rangeMax}
+        >
+          {rangeNow}
+        </div>
+      {/if}
+      <Atom {isPlaying} />
+      <Atom {isPlaying} />
+    </div>
+    <div aria-hidden={!isLoaded} class="flex gap-xs jc-between ai-center">
+      <div class="order-1">
+        <span class="hidden">Current time</span>
+        <span class="small monospace">{rangeStart}</span>
+      </div>
+      <div class="order-3">
+        <span class="hidden">Duration</span>
+        <span class="small monospace">-{rangeEnd}</span>
+      </div>
       <div
-        class="btn-group flex-grow-1"
+        class="Button-group jc-center order-2"
         aria-label="playback controls"
         role="toolbar"
       >
@@ -322,22 +309,22 @@
         />
       </div>
     </div>
+    {#if player && audioSrc}
+      <audio
+        bind:this={audio}
+        {playbackRate}
+        on:timeupdate={onTimeUpdate}
+        on:seeked={onSeeked}
+        on:pause={onPause}
+        on:play={onPlay}
+        on:ended={onEnded}
+        on:loadeddata={onLoaded}
+        on:loadedmetadata={onLoaded}
+        on:canplay={onLoaded}
+        on:canplaythrough={onLoaded}
+        src={audioSrc}
+        preload="metadata"
+      />
+    {/if}
   </div>
-  {#if player && audioSrc}
-    <audio
-      bind:this={audio}
-      {playbackRate}
-      on:timeupdate={onTimeUpdate}
-      on:seeked={onSeeked}
-      on:pause={onPause}
-      on:play={onPlay}
-      on:ended={onEnded}
-      on:loadeddata={onLoaded}
-      on:loadedmetadata={onLoaded}
-      on:canplay={onLoaded}
-      on:canplaythrough={onLoaded}
-      src={audioSrc}
-      preload="metadata"
-    />
-  {/if}
 </aside>

@@ -12,29 +12,30 @@
   $: episode = $playerStore as Episode;
 </script>
 
-<p class="h6 lh-base m-0 me-auto">
-  <img
-    alt={episode.title}
-    src={new URL(`/artwork/${episode.parent_id}`, PUBLIC_API_URL).href}
-    class="d-inline-block align-top rounded overflow-hidden me-1"
-    width="24"
-    height="24"
-    loading="lazy"
-  />
+<p class="mb-0">
+  <span class="inline-flex ai-center va-middle">
+    <img
+      alt={episode.title}
+      src={new URL(`/artwork/${episode.parent_id}`, PUBLIC_API_URL).href}
+      class="d-inline-block"
+      width="24"
+      height="24"
+      loading="lazy"
+    />
+  </span>
   {#if !isLoaded}
-    <span role="status" class="spinner-border spinner-border-sm me-1">
-      <span class="visually-hidden">Loading…</span>
-    </span>
+    <span class="hidden">Loading…</span>
   {/if}
-  {#if isOffline}<Wifioff />{:else if isDownload}<Floppy />{/if}
+  {#if isOffline}
+    <span class="inline-flex ai-center">
+      <Wifioff /></span
+    >{:else if isDownload}<span class="inline-flex ai-center"><Floppy /></span
+    >{/if}
   <span>{episode.title}</span>
 </p>
 {#if episode.parent}
-  <div class="d-flex flex-wrap">
-    <a
-      href={`/podcasts/${episode.parent_id}`}
-      class="text-body-secondary fs-7 me-2"
-    >
+  <div class="small flex flex-wrap gap-xs">
+    <a href={`/podcasts/${episode.parent_id}`}>
       {episode.parent.title}
     </a>
   </div>

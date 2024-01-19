@@ -1,14 +1,19 @@
 import * as log from 'log';
 import * as html from 'html';
 import * as xml from 'xml_streamify';
-import * as timer from '../library/timer.ts';
 import * as cache from '../cache/mod.ts';
 import * as db from '../database/mod.ts';
 import {Queue} from 'carriageway';
 import type {Podcast, Episode, AddPodcast, AddEpisode} from '../types.ts';
 
+const SECOND = 1e3;
+const MINUTE = SECOND * 60;
+const HOUR = MINUTE * 60;
+const DAY = HOUR * 24;
+// const WEEK = DAY * 7;
+
 const queue = new Queue<Podcast, boolean>({
-  concurrency: 3
+  concurrency: 5
 });
 
 export const addPodcastByFeed = async (
@@ -75,7 +80,7 @@ const syncCallback = async (podcast: Podcast): Promise<boolean> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => {
       controller.abort('timeout');
-    }, 10_000);
+    }, 30_000);
     const parser = xml.parse(podcast.url, {
       signal: controller.signal
     });
@@ -190,7 +195,7 @@ export const fetchAudio = (
   prefetch = true
 ): Promise<Response> => {
   return cache.fetchCache(new URL(episode.url), {
-    maxAge: timer.DAY * 30,
+    maxAge: DAY * 30,
     name: `audio:${episode.id}`,
     accept: [episode.type],
     compress: false,
@@ -228,7 +233,7 @@ export const fetchArtwork = async (
     }
   }
   return cache.fetchCache(new URL(image), {
-    maxAge: timer.DAY,
+    maxAge: DAY,
     name: `artwork:${podcast.id}`,
     prefetch,
     accept: [
