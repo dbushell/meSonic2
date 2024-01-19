@@ -24,7 +24,10 @@ export const getHeaders = (request?: Request): Headers => {
   headers.set('access-control-allow-methods', 'POST, GET, HEAD, OPTIONS');
   headers.set('access-control-allow-origin', env.get('ORIGIN'));
   const authorization = request?.headers.get('authorization') ?? '';
-  if (env.get('DEV') && authorization === `Bearer ${env.get('API_SECRET')}`) {
+  if (
+    env.get('DEV') === 'true' &&
+    authorization === `Bearer ${env.get('API_SECRET')}`
+  ) {
     headers.set('access-control-allow-origin', '*');
   }
   return headers;

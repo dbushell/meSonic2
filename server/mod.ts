@@ -14,7 +14,7 @@ shutdown.setup();
 // Something is missing...
 if (!env.check()) await shutdown.now();
 
-if (env.get('DEV')) {
+if (env.get('DEV') === 'true') {
   const css = await (
     await fetch(
       'https://raw.githubusercontent.com/dbushell/patchwork/v1.0.2/static/app.min.css'
