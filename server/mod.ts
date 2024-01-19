@@ -1,4 +1,5 @@
 import * as log from 'log';
+import * as path from 'path';
 import * as env from './library/env.ts';
 import * as db from './database/mod.ts';
 import * as cache from './cache/mod.ts';
@@ -12,6 +13,18 @@ shutdown.setup();
 
 // Something is missing...
 if (!env.check()) await shutdown.now();
+
+if (env.get('DEV')) {
+  const css = await (
+    await fetch(
+      'https://raw.githubusercontent.com/dbushell/patchwork/v1.0.2/static/app.min.css'
+    )
+  ).text();
+  Deno.writeTextFileSync(
+    path.join(Deno.cwd(), 'client/static/app.min.css'),
+    css
+  );
+}
 
 addEventListener('unhandledrejection', (error: PromiseRejectionEvent) => {
   error.preventDefault();
